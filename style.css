@@ -57,7 +57,7 @@
  footer{font-size:11px}#timeLabel{min-width:70px}
 }
 
-/* visual moderno */
+
 :root{--panel:rgba(14,20,28,.74);--line:rgba(255,255,255,.08);--mut:#8b9aa8;--acc:#4ab8ff}
 html,body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#070a0f}
 header{background:rgba(11,16,22,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
