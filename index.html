@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MONI Weather vC11</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div><button id="menuBtn" aria-label="Camadas">☰</button><b>MONI WEATHER</b><span>ALERTA CIVIL · vC11</span></div>
+    <div class="status"><i></i><span id="live">LIVE</span><span id="clock">--:--:--</span></div>
+  </header>
+  <main>
+    <aside>
+      <div class="civil-risk"><span>SITUAÇÃO NA SUA REGIÃO</span><b id="civilRisk">CONSULTE O MAPA</b><small>Clique na sua cidade para uma leitura simples.</small></div><div id="alerts" class="small">Avisos INMET: consultando…</div><h3>CAMADAS</h3>
+      <label><input type="checkbox" id="sat"> Satélite GOES-19</label>
+      <label><input type="checkbox" id="ir"> Nuvens de tempestade <span class="tech">IR</span></label>
+      <div id="satControls" class="sat-controls">
+        <div class="sat-row"><span>GOES-E / GEOCOLOR</span><b id="satStatus">DESLIGADO</b></div>
+        <div class="sat-row"><span>OPACIDADE</span><span id="opacityValue">72%</span></div>
+        <input id="satOpacity" type="range" min="10" max="100" value="72" />
+      </div>
+      <label><input type="checkbox" id="lightning"> Raios <span class="tag-live">GLM · terceiros</span></label>
+      <button id="locateMe" class="locate-btn">◎ MOSTRAR MINHA LOCALIZAÇÃO</button>
+      <label><input type="checkbox" id="rain" checked> Precipitação</label>
+      <label><input type="checkbox" id="storms" checked> Tempestades</label>
+      <label><input type="checkbox" id="hail" checked> Potencial de granizo</label>
+      <label><input type="checkbox" id="wind"> Vento</label>
+      <label><input type="checkbox" id="borders" checked> Limites territoriais</label>
+      <label><input type="checkbox" id="fires"> Queimadas <span class="tag-live">VIIRS · GOES</span></label>
+      <div class="sep"></div>
+      <h3>MONITOR SEVERO</h3>
+      <div class="severe-box">
+        <div><span>ABI IR</span><b id="irStatus">OFF</b></div>
+        <div><span>GLM</span><b id="glmStatus">OFF</b></div>
+        <div><span>VENTO</span><b id="windStatus">OFF</b></div>
+        <div><span>LIMITES</span><b id="borderStatus">CARREGANDO</b></div>
+        <div><span>ATUALIZAÇÃO</span><b>5 MIN</b></div>
+        <div><span>NÚCLEOS IR</span><b id="coreCount">0</b></div>
+        <div><span>QUEIMADAS</span><b id="fireStatus">OFF</b></div>
+      </div>
+      <button id="scanStorms" class="scan-btn">ANALISAR NÚCLEOS IR</button>
+      <div class="sep"></div>
+      <h3>PONTO SELECIONADO</h3>
+      <div id="point" class="panel" aria-live="polite">Clique no mapa.</div>
+      <div class="sep"></div>
+      <h3>LEGENDA</h3>
+      <div id="legendBox" aria-live="polite"></div>
+      <p class="small">Classificações são estimativas experimentais e não substituem alertas oficiais.</p>
+    </aside>
+    <section id="map"><div id="riskBar" role="status"></div><div id="zoomNotice" class="zoom-notice">ZOOM ALÉM DA RESOLUÇÃO NATIVA DO SATÉLITE</div></section>
+  </main>
+  <footer>
+    <button id="play">▶</button>
+    <span>OBSERVAÇÃO / PREVISÃO</span>
+    <input id="timeline" type="range" min="0" max="24" value="12" />
+    <span id="timeLabel">AGORA</span>
+    <span id="coords">LAT -- / LON --</span>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>
