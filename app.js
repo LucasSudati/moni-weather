@@ -517,14 +517,20 @@ async function submitReport(lat,lon){
       else{const er=await x.json().catch(()=>({}));msg=/limite/i.test(er.message||'')?'Limite de relatos atingido. Tente mais tarde.':'Não foi possível enviar; relato salvo só neste aparelho.';}
     }catch(e){msg='Sem conexão: relato salvo só neste aparelho.';}
     LSs('moni.reports',reports);}
-  $('#reportSheet').hidden=true;drawReports();map.flyTo([r.lat,r.lon],Math.max(map.getZoom(),13));toast(msg);
+  $('#reportSheet').hidden=true;drawReports();pullReports();map.flyTo([r.lat,r.lon],Math.max(map.getZoom(),13));toast(msg);
 }
+const setRep=(t,ok)=>{const el=$('#repStatus');if(el){el.textContent=t;el.classList.toggle('live',!!ok);}};
 async function pullReports(){
-  if(!SB_ON)return;
-  try{const b=map.getBounds(),since=new Date(Date.now()-48*36e5).toISOString(),f=v=>v.toFixed(3);
-    const x=await sbFetch(`reports?select=id,k,lat,lon,note,ok,gone,ts&ts=gte.${since}&lat=gte.${f(b.getSouth())}&lat=lte.${f(b.getNorth())}&lon=gte.${f(b.getWest())}&lon=lte.${f(b.getEast())}&order=ts.desc&limit=500`);
-    if(!x.ok)return;
-    reports=(await x.json()).map(r=>({...r,ts:Date.parse(r.ts)})).concat(reports.filter(l=>l.local));drawReports();}catch(e){}
+  if(!SB_ON){setRep('LOCAL');return;}
+  try{
+    const since=new Date(Date.now()-48*36e5).toISOString();
+    const x=await sbFetch(`reports?select=id,k,lat,lon,note,ok,gone,ts&ts=gte.${encodeURIComponent(since)}&order=ts.desc&limit=500`);
+    if(!x.ok){const er=await x.json().catch(()=>({}));console.warn('Relatos:',x.status,er);setRep('ERRO '+x.status);
+      if(!window._repErr){window._repErr=1;toast('Relatos: erro '+x.status+(er.message?' — '+er.message:''));}return;}
+    const remote=await x.json();
+    reports=remote.map(r=>({...r,ts:Date.parse(r.ts)})).concat(reports.filter(l=>l.local));
+    drawReports();setRep(remote.length+' · OK',true);
+  }catch(e){console.warn('Relatos:',e);setRep('SEM REDE');}
 }
 // UI
 $('#rsGrid').innerHTML=RT.map(t=>`<button data-k="${t.k}" style="--c:${t.c}"><span>${t.e}</span>${esc(t.t)}</button>`).join('');
@@ -544,4 +550,4 @@ $('#pickCancel').onclick=()=>{endPick();$('#reportSheet').hidden=false;};
 map.on('click',e=>{if(!window._pickMode)return;endPick();submitReport(e.latlng.lat,e.latlng.lng);});
 $('#reports').onchange=e=>e.target.checked?rLayer.addTo(map):map.removeLayer(rLayer);
 drawReports();pullReports();setInterval(()=>{drawReports();pullReports();},60000);
-map.on('moveend',()=>{clearTimeout(window._rm);window._rm=setTimeout(pullReports,600);});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)pullReports();});
