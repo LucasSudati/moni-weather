@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MONI Weather vC11</title>
+  <title>MONI Weather vC13</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
-    <div><button id="menuBtn" aria-label="Camadas">☰</button><b>MONI WEATHER</b><span>ALERTA CIVIL · vC11</span></div>
+    <div><button id="menuBtn" aria-label="Camadas">☰</button><b>MONI WEATHER</b><span>ALERTA CIVIL · vC13</span></div>
     <div class="status"><i></i><span id="live">LIVE</span><span id="clock">--:--:--</span></div>
   </header>
   <main>
@@ -31,6 +31,7 @@
       <label><input type="checkbox" id="wind"> Vento</label>
       <label><input type="checkbox" id="borders" checked> Limites territoriais</label>
       <label><input type="checkbox" id="fires"> Queimadas <span class="tag-live">VIIRS · GOES</span></label>
+      <label><input type="checkbox" id="reports" checked> Relatos da comunidade <span class="tag-live">COMUNIDADE</span></label>
       <div class="sep"></div>
       <h3>MONITOR SEVERO</h3>
       <div class="severe-box">
@@ -61,7 +62,22 @@
     <span id="coords">LAT -- / LON --</span>
   </footer>
 
+  <button id="reportFab" aria-label="Reportar situação">＋ REPORTAR</button>
+  <div id="reportSheet" hidden>
+    <div class="rs-back"></div>
+    <div class="rs-card" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
+      <div class="rs-head"><b id="rsTitle">O que está acontecendo aqui?</b><button id="rsClose" aria-label="Fechar">✕</button></div>
+      <div id="rsGrid" class="rs-grid"></div>
+      <div id="rsWarn" class="rs-warn"></div>
+      <textarea id="rsNote" maxlength="140" placeholder="Detalhe opcional (rua, horário…). Não inclua nomes nem telefones."></textarea>
+      <div class="rs-loc"><button id="rsGps">◎ Minha localização</button><button id="rsPick">📍 Marcar no mapa</button></div>
+      <p class="rs-sos">Risco de vida? Ligue 193 (Bombeiros), 192 (SAMU) ou 199 (Defesa Civil). Este mapa é colaborativo, não verificado e não é canal oficial.</p>
+    </div>
+  </div>
+  <div id="pickHint" hidden>Toque no mapa para posicionar o relato <button id="pickCancel">cancelar</button></div>
+  <div id="toast" hidden></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

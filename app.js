@@ -30,7 +30,7 @@ function clock(){const d=new Date();document.querySelector('#clock').textContent
 clock();setInterval(clock,1000);
 map.on('mousemove',e=>document.querySelector('#coords').textContent=`LAT ${e.latlng.lat.toFixed(3)} / LON ${e.latlng.lng.toFixed(3)}`);
 
-map.on('click',e=>inspect(e.latlng.lat,e.latlng.lng));
+map.on('click',e=>{if(window._pickMode)return;inspect(e.latlng.lat,e.latlng.lng);});
 
 document.querySelector('#rain').onchange=e=>e.target.checked?map.addLayer(rainLayer):map.removeLayer(rainLayer);
 document.querySelector('#storms').onchange=e=>e.target.checked?map.addLayer(stormLayer):map.removeLayer(stormLayer);
@@ -456,6 +456,7 @@ function renderLegend(){
   if(lgOn('rain'))S.push(lgSec('CHUVA (IMERG)','',lgRow('#7fb2ff','Precipitação observada'),'NASA IMERG, com atraso de algumas horas. As cores seguem a escala do produto.'));
   if(lgOn('fires'))S.push(lgSec('QUEIMADAS','',lgRow('#ff5a1f','Foco de calor','VIIRS · GOES'),'Detecção térmica por satélite; não confirma incêndio.'));
   if(lgOn('lightning'))S.push(lgSec('RAIOS (GLM)','',lgRow('#ffe066','Descarga detectada','últimos 15 min'),'Mais opaco = mais recente.'));
+  if(lgOn('reports'))S.push(lgSec('RELATOS','comunidade',lgRow('#43df86','Ajuda ou serviço disponível')+lgRow('#ffb14a','Necessidade ou serviço faltando')+lgRow('#ff4d4d','Perigo (árvore, poste ou fio)'),'Enviados por usuários, não verificados. Expiram sozinhos (12–48 h).'));
   if(lgOn('sat'))S.push(lgSec('SATÉLITE','',`<p style="margin:0">GOES-19 GeoColor: cor real de dia e infravermelho à noite.</p>`));
   if(locateBtn.classList.contains('active'))S.push(lgSec('LOCALIZAÇÃO','',lgRow('#4ab8ff','Você está aqui')));
   document.querySelector('#legendBox').innerHTML=S.join('');
@@ -463,3 +464,84 @@ function renderLegend(){
 document.querySelector('aside').addEventListener('change',renderLegend);
 new MutationObserver(renderLegend).observe(locateBtn,{attributes:true,attributeFilter:['class']});
 renderLegend();
+
+
+// ========================= vC12 — relatos da comunidade =========================
+// Relatos compartilhados via Supabase (config.js). Sem configuração, ficam só neste aparelho (localStorage).
+const CFG=window.MONI_CONFIG||{},SB_ON=!!(CFG.supabaseUrl&&CFG.supabaseKey);
+const sbFetch=(path,opt={})=>fetch(CFG.supabaseUrl+'/rest/v1/'+path,{...opt,headers:{apikey:CFG.supabaseKey,...(CFG.supabaseKey.startsWith('eyJ')?{Authorization:'Bearer '+CFG.supabaseKey}:{}),'Content-Type':'application/json',...(opt.headers||{})}});
+const RT=[
+ {k:'shelter',e:'🏠',t:'Abrigo',c:'#43df86',g:'ajuda'},
+ {k:'collect',e:'📦',t:'Arrecadação de mantimentos',c:'#43df86',g:'ajuda'},
+ {k:'distrib',e:'🍞',t:'Distribuição de mantimentos',c:'#43df86',g:'ajuda'},
+ {k:'tarp_have',e:'⛺',t:'Lonas disponíveis',c:'#43df86',g:'ajuda'},
+ {k:'tarp_need',e:'🏚️',t:'Precisa de lona',c:'#ffb14a',g:'necessidade'},
+ {k:'tree',e:'🌳',t:'Árvore caída',c:'#ff4d4d',g:'perigo'},
+ {k:'wire',e:'⚡',t:'Poste / fio caído',c:'#ff4d4d',g:'perigo'},
+ {k:'power_on',e:'💡',t:'Com energia',c:'#43df86',g:'servico'},
+ {k:'power_off',e:'🔌',t:'Sem energia',c:'#ffb14a',g:'servico'},
+ {k:'water_on',e:'🚰',t:'Com água',c:'#43df86',g:'servico'},
+ {k:'water_off',e:'🚱',t:'Sem água',c:'#ffb14a',g:'servico'}];
+const RTTL={ajuda:48,necessidade:24,perigo:12,servico:12}; // validade em horas
+const $=q=>document.querySelector(q), rType=k=>RT.find(t=>t.k===k);
+const LSg=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, LSs=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let reports=LSg('moni.reports',[]),myVotes=LSg('moni.votes',{}),rSel=null,lastSend=0;
+const rLayer=L.layerGroup().addTo(map);
+const rAlive=r=>{const t=rType(r.k);return !!t&&Date.now()-r.ts<RTTL[t.g]*36e5&&(r.gone||0)<3;};
+const ago=ts=>{const m=Math.round((Date.now()-ts)/6e4);return m<1?'agora':m<60?`há ${m} min`:`há ${Math.round(m/60)} h`;};
+function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,3500);}
+function drawReports(){
+  rLayer.clearLayers();reports=reports.filter(rAlive);LSs('moni.reports',reports);
+  for(const r of reports){const t=rType(r.k);
+    const mk=L.marker([r.lat,r.lon],{icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:`<div class="rp" style="border-color:${t.c}">${t.e}</div>`})});
+    mk.bindPopup(`<b>${t.e} ${esc(t.t)}</b><br><small>${ago(r.ts)} · ✔ ${r.ok||0} · ✖ ${r.gone||0}</small>${r.note?`<p>${esc(r.note)}</p>`:''}${t.k==='wire'?'<p class="rp-warn">Perigo: mantenha distância e avise a concessionária e a Defesa Civil (199).</p>':''}<div class="rp-btns"><button data-v="ok">✔ Ainda vale</button><button data-v="gone">✖ Não está mais</button></div>`);
+    mk.on('popupopen',e=>e.popup.getElement().querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>vote(r.id,b.dataset.v)));
+    mk.addTo(rLayer);}
+}
+function vote(id,v){
+  if(myVotes[id])return toast('Você já votou neste relato.');
+  const r=reports.find(x=>x.id===id);if(!r)return;
+  r[v]=(r[v]||0)+1;myVotes[id]=v;LSs('moni.votes',myVotes);
+  if(SB_ON)sbFetch('rpc/vote_report',{method:'POST',body:JSON.stringify({rid:id,v})}).catch(()=>{});
+  drawReports();map.closePopup();toast('Obrigado pelo voto.');
+}
+async function submitReport(lat,lon){
+  if(!rSel)return toast('Escolha o tipo de relato.');
+  if(Date.now()-lastSend<30000)return toast('Aguarde alguns segundos antes de enviar outro relato.');
+  const r={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),k:rSel,lat:+lat.toFixed(rType(rSel).g==='ajuda'?4:3),lon:+lon.toFixed(rType(rSel).g==='ajuda'?4:3),note:$('#rsNote').value.trim().slice(0,140),ts:Date.now(),ok:0,gone:0};
+  lastSend=Date.now();reports.push(r);LSs('moni.reports',reports);
+  let msg='Relato salvo apenas neste aparelho.';
+  if(SB_ON){r.local=true;
+    try{const x=await sbFetch('reports?select=id',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({k:r.k,lat:r.lat,lon:r.lon,note:r.note})});
+      if(x.ok){const j=await x.json();if(j[0]&&j[0].id)r.id=j[0].id;delete r.local;msg='Relato enviado. Obrigado!';}
+      else{const er=await x.json().catch(()=>({}));msg=/limite/i.test(er.message||'')?'Limite de relatos atingido. Tente mais tarde.':'Não foi possível enviar; relato salvo só neste aparelho.';}
+    }catch(e){msg='Sem conexão: relato salvo só neste aparelho.';}
+    LSs('moni.reports',reports);}
+  $('#reportSheet').hidden=true;drawReports();map.flyTo([r.lat,r.lon],Math.max(map.getZoom(),13));toast(msg);
+}
+async function pullReports(){
+  if(!SB_ON)return;
+  try{const b=map.getBounds(),since=new Date(Date.now()-48*36e5).toISOString(),f=v=>v.toFixed(3);
+    const x=await sbFetch(`reports?select=id,k,lat,lon,note,ok,gone,ts&ts=gte.${since}&lat=gte.${f(b.getSouth())}&lat=lte.${f(b.getNorth())}&lon=gte.${f(b.getWest())}&lon=lte.${f(b.getEast())}&order=ts.desc&limit=500`);
+    if(!x.ok)return;
+    reports=(await x.json()).map(r=>({...r,ts:Date.parse(r.ts)})).concat(reports.filter(l=>l.local));drawReports();}catch(e){}
+}
+// UI
+$('#rsGrid').innerHTML=RT.map(t=>`<button data-k="${t.k}" style="--c:${t.c}"><span>${t.e}</span>${esc(t.t)}</button>`).join('');
+$('#rsGrid').onclick=e=>{const b=e.target.closest('button');if(!b)return;rSel=b.dataset.k;[...$('#rsGrid').children].forEach(x=>x.classList.toggle('sel',x===b));$('#rsWarn').textContent=rSel==='wire'?'Não se aproxime do fio. Avise a concessionária de energia e a Defesa Civil (199).':'';};
+$('#reportFab').onclick=()=>{rSel=null;[...$('#rsGrid').children].forEach(x=>x.classList.remove('sel'));$('#rsNote').value='';$('#rsWarn').textContent='';$('#reportSheet').hidden=false;};
+const closeSheet=()=>{$('#reportSheet').hidden=true;};
+$('#rsClose').onclick=closeSheet;$('.rs-back').onclick=closeSheet;
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();});
+$('#rsGps').onclick=()=>{
+  if(!rSel)return toast('Escolha o tipo de relato primeiro.');
+  if(!navigator.geolocation)return toast('Localização não suportada neste navegador.');
+  navigator.geolocation.getCurrentPosition(p=>submitReport(p.coords.latitude,p.coords.longitude),()=>toast('Não foi possível obter sua localização.'),{enableHighAccuracy:true,timeout:12000});
+};
+const endPick=()=>{window._pickMode=false;$('#pickHint').hidden=true;};
+$('#rsPick').onclick=()=>{if(!rSel)return toast('Escolha o tipo de relato primeiro.');closeSheet();window._pickMode=true;$('#pickHint').hidden=false;};
+$('#pickCancel').onclick=()=>{endPick();$('#reportSheet').hidden=false;};
+map.on('click',e=>{if(!window._pickMode)return;endPick();submitReport(e.latlng.lat,e.latlng.lng);});
+$('#reports').onchange=e=>e.target.checked?rLayer.addTo(map):map.removeLayer(rLayer);
+drawReports();pullReports();setInterval(()=>{drawReports();pullReports();},60000);
+map.on('moveend',()=>{clearTimeout(window._rm);window._rm=setTimeout(pullReports,600);});
