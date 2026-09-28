@@ -6,7 +6,7 @@ const base=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Can
   attribution:'Tiles © Esri',
   className:'esri-dark'
 }).addTo(map);
-// V6: nomes e limites vêm de uma única camada de referência para evitar rótulos duplicados.
+// nomes e limites vêm de uma única camada de referência para evitar rótulos duplicados.
 
 map.createPane('satellitePane');
 map.createPane('infraredPane');
@@ -78,7 +78,7 @@ document.querySelector('#satOpacity').oninput=e=>{document.querySelector('#opaci
 
 
 
-// V6 — IR renderizado como uma imagem contínua da área visível.
+// IR renderizado como uma imagem contínua da área visível.
 // Evita a aparência de mosaico/quadrados dos tiles WMS quando o usuário aproxima o mapa.
 let infraredRequestId=0;
 function irViewportUrl(offsetHours=0){
@@ -120,7 +120,7 @@ document.querySelector('#ir').onchange=e=>{
   }else{infraredRequestId++;if(infraredLayer)map.removeLayer(infraredLayer);infraredLayer=null;setIrStatus('OFF');updateZoomNotice();}
 };
 
-// V5: GLM, vento e limites configurados no bloco final.
+// GLM, vento e limites configurados no bloco final.
 
 const timeline=document.querySelector('#timeline');
 function applyTimeline(){
@@ -153,7 +153,7 @@ setInterval(()=>{
 },300000);
 
 
-// V4 — detector experimental de núcleos frios a partir da imagem IR renderizada.
+// detector experimental de núcleos frios a partir da imagem IR renderizada.
 // Ele procura as cores quentes (amarelo/laranja/vermelho) da paleta do produto Band 13.
 // Isso NÃO confirma granizo nem substitui radar/alertas oficiais.
 function mercatorXY(lat, lon){
@@ -224,7 +224,6 @@ document.querySelector('#scanStorms').onclick=scanInfraredCores;
 document.querySelector('#storms').addEventListener('change',e=>e.target.checked?map.addLayer(detectedStormLayer):map.removeLayer(detectedStormLayer));
 map.on('moveend',()=>{detectedStormLayer.clearLayers();document.querySelector('#coreCount').textContent='0';updateZoomNotice();});
 
-// ========================= V5 =========================
 map.createPane('boundaryPane');
 map.getPane('boundaryPane').style.zIndex=650;
 map.getPane('boundaryPane').style.pointerEvents='none';
@@ -243,7 +242,7 @@ async function loadBrazilBorders(){
 loadBrazilBorders();
 document.querySelector('#borders').onchange=e=>{const on=e.target.checked;for(const l of [worldBoundaries,brazilBorders])on?map.addLayer(l):map.removeLayer(l);const st=document.querySelector('#borderStatus');st.textContent=on?'ON':'OFF';st.classList.toggle('live',on);};
 
-// vC10 — campo de vento: malha densa de setas (estática) + partículas animadas em canvas, sem azul.
+// campo de vento: malha densa de setas (estática) + partículas animadas em canvas, sem azul.
 map.createPane('windPane');map.getPane('windPane').style.zIndex=455;map.getPane('windPane').style.pointerEvents='none';
 const arrCv=document.createElement('canvas'),windCv=document.createElement('canvas');
 for(const c of [arrCv,windCv]){c.style.cssText='position:absolute;left:0;top:0;pointer-events:none;display:none';map.getPane('windPane').appendChild(c);}
@@ -316,7 +315,7 @@ document.querySelector('#wind').onchange=e=>{
 map.on('zoomstart',()=>{if(windEnabled)for(const c of [arrCv,windCv])c.style.opacity=0;});
 map.on('moveend resize',()=>{if(windEnabled&&wf)placeWind();});
 
-// V7 — raios no próprio mapa. A API fornece pontos GeoJSON derivados do GOES-19 GLM/NOAA.
+// raios no próprio mapa. A API fornece pontos GeoJSON derivados do GOES-19 GLM/NOAA.
 const lightningLayer=L.layerGroup(); let lightningEnabled=false,glmTimer=null,glmRequest=0;
 function lightningIcon(age){
   const opacity=Math.max(.35,1-Number(age||0)/900);
@@ -343,7 +342,7 @@ const FIRE_LAYER_CONFIG={provider:'NASA GIBS',wms:GIBS_WMS,layer:'GOES-East_ABI_
 let irMoveTimer=null;map.on('moveend',()=>{if(windEnabled){clearTimeout(window._wm);window._wm=setTimeout(refreshWind,400);}if(infraredEnabled){clearTimeout(irMoveTimer);irMoveTimer=setTimeout(()=>buildInfrared(12-Number(timeline.value)),180);} });
 
 
-// V7 — localização do usuário via API de geolocalização do navegador (somente após clique).
+// localização do usuário via API de geolocalização do navegador (somente após clique).
 let userMarker=null,userAccuracy=null;
 const locateBtn=document.querySelector('#locateMe');
 locateBtn.onclick=()=>{
@@ -360,7 +359,6 @@ locateBtn.onclick=()=>{
 map.on('moveend',()=>{if(lightningEnabled){clearTimeout(window._gm);window._gm=setTimeout(refreshGlm,400);}});
 
 
-// ========================= vC8 =========================
 function fetchT(u,ms=10000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t));}
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -429,7 +427,7 @@ document.querySelector('#menuBtn').onclick=()=>document.querySelector('aside').c
 map.on('click',()=>document.querySelector('aside').classList.remove('open'));
 
 
-// ========================= vC9 — queimadas =========================
+// ========================= queimadas =========================
 // Condição meteorológica favorável ao fogo (heurística simples; não indica foco ativo).
 function fireWx(rh,gust,p,t){if(!isFinite(rh))return '--';let n=0;if(rh<30)n+=2;else if(rh<45)n++;if(gust>=35)n++;if(t>=30)n++;if(p>0.2)n=0;return n>=4?'MUITO ALTA':n>=3?'ALTA':n>=2?'MÉDIA':'BAIXA';}
 // Focos de calor via NASA GIBS: VIIRS 375 m (S-NPP) + GOES-East FireTemp. Detecção térmica, não confirma incêndio.
@@ -442,7 +440,7 @@ fireVIIRS.on('loading',()=>setFire('CARREGANDO…'));fireVIIRS.on('load',()=>set
 document.querySelector('#fires').onchange=e=>{if(e.target.checked){fireLayer.addTo(map);setFire('CARREGANDO…');}else{map.removeLayer(fireLayer);setFire('OFF');}};
 
 
-// ========================= vC11 — legenda contextual =========================
+// ========================= legenda contextual =========================
 // Mostra só o que está ativo no mapa; cores e limites vêm das mesmas constantes usadas nas camadas.
 const lgOn=id=>{const el=document.querySelector('#'+id);return !!(el&&el.checked);};
 const lgRow=(c,t,sm='')=>`<div class="row"><span class="sw" style="background:${c}"></span>${t}${sm?`<small>${sm}</small>`:''}</div>`;
@@ -466,7 +464,7 @@ new MutationObserver(renderLegend).observe(locateBtn,{attributes:true,attributeF
 renderLegend();
 
 
-// ========================= vC12 — relatos da comunidade =========================
+// ========================= relatos da comunidade =========================
 // Relatos compartilhados via Supabase (config.js). Sem configuração, ficam só neste aparelho (localStorage).
 const CFG=window.MONI_CONFIG||{},SB_ON=!!(CFG.supabaseUrl&&CFG.supabaseKey);
 const sbFetch=(path,opt={})=>fetch(CFG.supabaseUrl+'/rest/v1/'+path,{...opt,headers:{apikey:CFG.supabaseKey,...(CFG.supabaseKey.startsWith('eyJ')?{Authorization:'Bearer '+CFG.supabaseKey}:{}),'Content-Type':'application/json',...(opt.headers||{})}});
