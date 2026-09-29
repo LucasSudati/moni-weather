@@ -180,3 +180,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 .maxcappi-label{background:#071018e8!important;border:1px solid #ffffff22!important;color:#dce8ef!important;box-shadow:none!important;font:8px/1 Consolas,monospace!important;padding:3px 5px!important;border-radius:5px!important}
 .maxcappi-label:before{display:none!important}
 .maxcappi-popup{min-width:220px;font:11px/1.45 Consolas,monospace;color:#d8e4ea}.maxcappi-popup b{font-size:12px}.maxcappi-popup .mc-grid{display:grid;grid-template-columns:1fr auto;gap:3px 12px;margin-top:7px}.maxcappi-popup .mc-muted{color:#80919d}.maxcappi-popup .mc-good{color:#6fe3a1}.maxcappi-popup .mc-warn{color:#ffd36a}.maxcappi-popup .mc-bad{color:#ff7777}.maxcappi-popup hr{border:0;border-top:1px solid #ffffff18;margin:8px 0}
+
+/* V3: precipitação HD + classificação automática MAXCAPPI */
+.leaflet-pane.leaflet-precipHdPane-pane img{image-rendering:auto!important;mix-blend-mode:screen}
+.layer-count{margin-left:auto;min-width:20px;padding:1px 5px;border-radius:9px;background:#ffffff10;color:#91a2ae;font:8px Consolas,monospace;text-align:center}

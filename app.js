@@ -21,6 +21,9 @@ map.getPane('radarPane').style.pointerEvents='none';
 const weatherLayer=L.layerGroup().addTo(map);
 const stormLayer=L.layerGroup().addTo(map);
 const hailLayer=L.layerGroup().addTo(map);
+// Camadas automáticas derivadas do MAXCAPPI Analyzer (separadas da análise pontual).
+const autoStormLayer=L.layerGroup().addTo(map);
+const autoHailLayer=L.layerGroup().addTo(map);
 const detectedStormLayer=L.layerGroup().addTo(map);
 let satelliteLayer=null;
 let satelliteEnabled=false;
@@ -35,9 +38,9 @@ map.on('mousemove',e=>document.querySelector('#coords').textContent=`LAT ${e.lat
 
 map.on('click',e=>{if(window._pickMode)return;inspect(e.latlng.lat,e.latlng.lng);});
 
-document.querySelector('#rain').onchange=e=>e.target.checked?map.addLayer(rainLayer):map.removeLayer(rainLayer);
-document.querySelector('#storms').onchange=e=>e.target.checked?map.addLayer(stormLayer):map.removeLayer(stormLayer);
-document.querySelector('#hail').onchange=e=>e.target.checked?map.addLayer(hailLayer):map.removeLayer(hailLayer);
+document.querySelector('#rain').onchange=e=>setPrecipitation(e.target.checked);
+document.querySelector('#storms').onchange=e=>{const on=e.target.checked;on?(map.addLayer(stormLayer),map.addLayer(autoStormLayer)):(map.removeLayer(stormLayer),map.removeLayer(autoStormLayer));if(on&&!maxcappiData)refreshMaxcappi(true);};
+document.querySelector('#hail').onchange=e=>{const on=e.target.checked;on?(map.addLayer(hailLayer),map.addLayer(autoHailLayer)):(map.removeLayer(hailLayer),map.removeLayer(autoHailLayer));if(on&&!maxcappiData)refreshMaxcappi(true);};
 
 function roundedUtc(offsetHours=0){
   const d=new Date(Date.now()-offsetHours*3600000);
@@ -510,9 +513,29 @@ locateBtn.onclick=()=>{
 function fetchT(u,ms=10000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t));}
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-// Precipitação real (NASA GIBS / IMERG, observada; tem atraso de algumas horas).
+// Precipitação V3: IMERG dá cobertura ampla; MAXCAPPI adiciona detalhe de radar onde existe cobertura.
+// Não há interpolação artificial: preservamos a resolução nativa das imagens REDEMET.
 map.createPane('rainPane');map.getPane('rainPane').style.zIndex=240;map.getPane('rainPane').style.pointerEvents='none';
-const rainLayer=L.tileLayer.wms(GIBS_WMS,{layers:'IMERG_Precipitation_Rate',format:'image/png',transparent:true,opacity:.7,pane:'rainPane',attribution:'NASA GIBS / IMERG'}).addTo(map);
+map.createPane('precipHdPane');map.getPane('precipHdPane').style.zIndex=245;map.getPane('precipHdPane').style.pointerEvents='none';
+const rainLayer=L.tileLayer.wms(GIBS_WMS,{layers:'IMERG_Precipitation_Rate',format:'image/png',transparent:true,opacity:.28,pane:'rainPane',attribution:'NASA GIBS / IMERG'}).addTo(map);
+const precipHdLayer=L.layerGroup().addTo(map);
+let precipHdTimer=null,precipHdReq=0;
+function clearPrecipHd(){precipHdLayer.clearLayers();}
+async function refreshPrecipHd(){
+  if(!document.querySelector('#rain')?.checked)return;const req=++precipHdReq;
+  try{
+    const r=await fetch(`${RADAR_API}?area=all&tipo=maxcappi&anima=1`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    const d=await r.json();if(req!==precipHdReq||!document.querySelector('#rain')?.checked)return;
+    const imgs=latestPerRadar(Array.isArray(d?.images)?d.images:[]);clearPrecipHd();
+    for(const im of imgs){const b=im?.bounds;if(!im?.image||!b)continue;L.imageOverlay(im.image,[[b.south,b.west],[b.north,b.east]],{opacity:.76,pane:'precipHdPane',interactive:false,attribution:'REDEMET / DECEA MAXCAPPI'}).addTo(precipHdLayer);}
+  }catch(e){console.warn('Precipitação HD REDEMET',e);}
+}
+function setPrecipitation(on){
+  if(on){map.addLayer(rainLayer);map.addLayer(precipHdLayer);refreshPrecipHd();clearInterval(precipHdTimer);precipHdTimer=setInterval(refreshPrecipHd,120000);}
+  else{precipHdReq++;clearInterval(precipHdTimer);precipHdTimer=null;map.removeLayer(rainLayer);map.removeLayer(precipHdLayer);clearPrecipHd();}
+}
+// A opção inicia ligada no HTML.
+refreshPrecipHd();precipHdTimer=setInterval(refreshPrecipHd,120000);
 
 // Escala única de risco (heurística experimental, não é alerta oficial).
 const LV=[
@@ -776,6 +799,38 @@ function mcVisibleCells(cells){
   const b=map.getBounds().pad(.18);
   return cells.filter(c=>{const lat=Number(c.lat),lon=Number(c.lon);return Number.isFinite(lat)&&Number.isFinite(lon)&&b.contains([lat,lon]);});
 }
+function mcAreaRadiusM(c){
+  const a=Number(c?.approximate_area_km2);
+  if(!Number.isFinite(a)||a<=0)return 6500;
+  return Math.max(3500,Math.min(45000,Math.sqrt(a/Math.PI)*1000));
+}
+function mcStormClass(c){
+  const i=String(c?.intensity||'').toLowerCase(),dbz=Number(c?.max_estimated_dbz),cores=Number(c?.core_count||0);
+  if(i==='extreme'||i==='severe'||dbz>=55)return {level:3,label:'TEMPESTADE FORTE',color:'#ff4f57'};
+  if(i==='very_strong'||dbz>=48||cores>=2)return {level:2,label:'TEMPESTADE',color:'#ff9a3d'};
+  if(i==='strong'||dbz>=42)return {level:1,label:'CÉLULA CONVECTIVA',color:'#ffd84d'};
+  return null;
+}
+function mcHailPotential(c){
+  // Heurística conservadora baseada apenas na estrutura/intensidade do MAXCAPPI. Não confirma granizo no solo.
+  const i=String(c?.intensity||'').toLowerCase(),dbz=Number(c?.max_estimated_dbz),mag=!!c?.has_magenta,cores=Number(c?.core_count||0);
+  if(mag&&(i==='extreme'||dbz>=60))return {level:3,label:'POTENCIAL ALTO',color:'#d94cff'};
+  if(mag||i==='severe'||dbz>=55)return {level:2,label:'POTENCIAL MODERADO',color:'#b65cff'};
+  if((i==='very_strong'&&dbz>=50)||cores>=3&&dbz>=50)return {level:1,label:'POTENCIAL BAIXO',color:'#8f70ff'};
+  return null;
+}
+function drawMaxcappiHazards(data){
+  autoStormLayer.clearLayers();autoHailLayer.clearLayers();
+  const cells=mcVisibleCells(Array.isArray(data?.cells)?data.cells:[]),z=map.getZoom();
+  let ns=0,nh=0;
+  for(const c of cells){const lat=Number(c.lat),lon=Number(c.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;const r=mcAreaRadiusM(c);
+    const st=mcStormClass(c);
+    if(st&&document.querySelector('#storms')?.checked){L.circle([lat,lon],{radius:r,pane:'maxcappiPane',renderer:maxcappiRenderer,color:st.color,weight:z>=7?2:1,fillColor:st.color,fillOpacity:z>=7?.12:.08,interactive:true}).bindPopup(()=>`<div class="maxcappi-popup"><b>${st.label}</b><div class="mc-grid"><span>Intensidade</span><b>${mcEsc(String(c.intensity||'--').toUpperCase())}</b><span>Máx. estimado</span><b>${mcNum(c.max_estimated_dbz,1)} dBZ</b><span>Área aprox.</span><b>${mcNum(c.approximate_area_km2,1)} km²</b></div><hr><div class="mc-muted">Área automática derivada da célula MAXCAPPI. Não é alerta oficial.</div></div>`).addTo(autoStormLayer);ns++;}
+    const hp=mcHailPotential(c);
+    if(hp&&document.querySelector('#hail')?.checked){L.circle([lat,lon],{radius:Math.max(3000,r*.62),pane:'maxcappiPane',renderer:maxcappiRenderer,color:hp.color,weight:2,dashArray:'5 5',fillColor:hp.color,fillOpacity:.055,interactive:true}).bindPopup(()=>`<div class="maxcappi-popup"><b>${hp.label} DE GRANIZO</b><div class="mc-grid"><span>Refletividade estimada</span><b>${mcNum(c.max_estimated_dbz,1)} dBZ</b><span>Intensidade</span><b>${mcEsc(String(c.intensity||'--').toUpperCase())}</b><span>Núcleos</span><b>${mcEsc(c.core_count??0)}</b></div><hr><div class="mc-muted">Potencial experimental inferido do radar. Não significa granizo confirmado no solo.</div></div>`).addTo(autoHailLayer);nh++;}
+  }
+  const es=document.querySelector('#stormAutoCount'),eh=document.querySelector('#hailAutoCount');if(es)es.textContent=ns;if(eh)eh.textContent=nh;
+}
 function drawMaxcappi(data){
   clearMaxcappi();if(!maxcappiEnabled)return;
   const all=Array.isArray(data?.cells)?data.cells:[];rememberMaxcappi(all);
@@ -807,19 +862,23 @@ function drawMaxcappi(data){
     }
   }
   setMaxcappiStatus(`${cells.length}/${all.length} CÉL · ${forecastCount} PTS`,true);
+  drawMaxcappiHazards(data);
 }
 function scheduleMaxcappiDraw(){
   if(!maxcappiEnabled||!maxcappiData)return;
   clearTimeout(maxcappiDrawTimer);maxcappiDrawTimer=setTimeout(()=>drawMaxcappi(maxcappiData),90);
 }
-async function refreshMaxcappi(){
-  if(!maxcappiEnabled)return;const req=++maxcappiReq;setMaxcappiStatus('ANALISANDO…');
-  try{const r=await fetch(MAXCAPPI_ANALYZE_API,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(req!==maxcappiReq||!maxcappiEnabled)return;if(!data?.ok)throw new Error(data?.error||'Analyzer sem resposta');maxcappiData=data;drawMaxcappi(data);
-  }catch(err){console.warn('MAXCAPPI Analyzer',err);setMaxcappiStatus('INDISPONÍVEL');clearMaxcappi();}
+async function refreshMaxcappi(force=false){
+  const hazardsOn=document.querySelector('#storms')?.checked||document.querySelector('#hail')?.checked;
+  if(!maxcappiEnabled&&!force&&!hazardsOn)return;const req=++maxcappiReq;if(maxcappiEnabled)setMaxcappiStatus('ANALISANDO…');
+  try{const r=await fetch(MAXCAPPI_ANALYZE_API,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(req!==maxcappiReq)return;if(!data?.ok)throw new Error(data?.error||'Analyzer sem resposta');maxcappiData=data;if(maxcappiEnabled)drawMaxcappi(data);else drawMaxcappiHazards(data);
+  }catch(err){console.warn('MAXCAPPI Analyzer',err);if(maxcappiEnabled){setMaxcappiStatus('INDISPONÍVEL');clearMaxcappi();}}
 }
 function setMaxcappi(on){maxcappiEnabled=on;document.querySelector('#maxcappiControls')?.classList.toggle('visible',on);if(on){map.addLayer(maxcappiLayer);refreshMaxcappi();}else{maxcappiReq++;clearTimeout(maxcappiDrawTimer);map.removeLayer(maxcappiLayer);clearMaxcappi();setMaxcappiStatus('OFF');}}
 document.querySelector('#maxcappiCells').onchange=e=>setMaxcappi(e.target.checked);
 document.querySelector('#maxcappiRefresh').onclick=refreshMaxcappi;
 for(const id of ['maxcappiTracks','maxcappiForecast','maxcappiLabels'])document.querySelector('#'+id).onchange=()=>scheduleMaxcappiDraw();
-map.on('moveend zoomend',scheduleMaxcappiDraw);
+map.on('moveend zoomend',()=>{scheduleMaxcappiDraw();if(maxcappiData)drawMaxcappiHazards(maxcappiData);});
+// Tempestades e granizo iniciam ligados: carrega a análise mesmo se a camada de células estiver desligada.
+setTimeout(()=>refreshMaxcappi(true),250);
 
