@@ -359,7 +359,7 @@ map.on('moveend resize',()=>{if(windEnabled&&wf)placeWind();});
 let radarEnabled=false,radarTimer=null,radarAnimTimer=null,radarPlaying=false,radarReq=0,radarFrameIndex=0;
 let radarFrames=[],radarOverlays=[];
 const RADAR_API=(window.MONI_CONFIG&&window.MONI_CONFIG.radarApiUrl)||((window.MONI_CONFIG?.supabaseUrl||'')+'/functions/v1/radar');
-const RADAR_AREAS=['sg','cn','mi']; // Santiago/RS, Canguçu/RS e Morro da Igreja/SC.
+const RADAR_AREAS=['al','be','bv','cn','cz','ga','jr','mq','mo','mn','mi','nt','pl','pc','pv','sv','sn','st','sg','sf','ua','sl','sr','tt','tf','tm']; // Todos os radares atualmente documentados pela REDEMET.
 function setRadarStatus(t,live=false){const e=document.querySelector('#radarStatus');if(!e)return;e.textContent=t;e.classList.toggle('live',live);}
 function radarStamp(ts){if(!ts)return'--';const d=new Date(String(ts).replace(' ','T')+'Z');return Number.isNaN(d.getTime())?String(ts).slice(11,16):d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+'Z';}
 function clearRadarOverlays(){radarOverlays.forEach(x=>map.removeLayer(x));radarOverlays=[];}
@@ -385,8 +385,13 @@ function buildRadarFrames(all){
 async function refreshRadar(){
   if(!radarEnabled)return;const req=++radarReq;setRadarStatus('ATUALIZANDO…');
   try{
-    const jobs=RADAR_AREAS.map(area=>fetch(`${RADAR_API}?area=${area}&tipo=maxcappi&anima=5`,{cache:'no-store'}).then(async r=>{if(!r.ok)throw new Error(`${area}: HTTP ${r.status}`);return r.json();}));
-    const settled=await Promise.allSettled(jobs);if(req!==radarReq||!radarEnabled)return;
+    const settled=[];
+    // Lotes pequenos reduzem picos de chamadas na Edge Function/REDEMET.
+    for(let i=0;i<RADAR_AREAS.length;i+=5){
+      const batch=await Promise.allSettled(RADAR_AREAS.slice(i,i+5).map(area=>fetch(`${RADAR_API}?area=${area}&tipo=maxcappi&anima=5`,{cache:'no-store'}).then(async r=>{if(!r.ok)throw new Error(`${area}: HTTP ${r.status}`);return r.json();})));
+      settled.push(...batch);
+      if(req!==radarReq||!radarEnabled)return;
+    }if(req!==radarReq||!radarEnabled)return;
     const images=[];let ok=0;for(const x of settled){if(x.status==='fulfilled'&&x.value?.ok){ok++;images.push(...(x.value.images||[]));}else if(x.status==='rejected')console.warn('Radar REDEMET',x.reason);}
     radarFrames=buildRadarFrames(images);
     if(!radarFrames.length){clearRadarOverlays();setRadarStatus('SEM DADOS');document.querySelector('#radarFrame').textContent='--';return;}
