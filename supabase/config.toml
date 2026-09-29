@@ -1,0 +1,2 @@
+[functions.glm]
+verify_jwt = false

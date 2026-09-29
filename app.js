@@ -351,47 +351,42 @@ document.querySelector('#wind').onchange=e=>{
 map.on('zoomstart movestart',()=>{if(windEnabled){cancelAnimationFrame(windRaf);clearWindCanvas();for(const c of [arrCv,windCv])c.style.opacity=0;}});
 map.on('moveend resize',()=>{if(windEnabled&&wf)placeWind();});
 
-// Raios / atividade elétrica NOAA GOES-19 GLM — América do Sul (setor sul).
-// Usa o produto oficial Flash Extent Density (EXTENT3), atualizado pela NOAA em ~5 min.
-// A camada é tratada como densidade de atividade elétrica, não como descargas em solo.
+// Raios / atividade elétrica NOAA GOES-19 GLM — flashes georreferenciados.
+// O navegador consome JSON da Supabase Edge Function do projeto.
+// A Edge Function lê GLM-L2-LCFA oficial (NetCDF/HDF5) e devolve apenas flashes recentes.
 const lightningLayer=L.layerGroup();
 let lightningEnabled=false,glmTimer=null,glmRequest=0,glmFeatures=[];
-let glmOverlay=null, glmLastUrl='';
-const GLM_NOAA_URL='https://cdn.star.nesdis.noaa.gov/GOES19/GLM/SECTOR/ssa/EXTENT3/1800x1080.jpg';
-// Extensão cartográfica do setor South America - Southern. Mantemos a imagem somente
-// como visualização NOAA; ela não é convertida em coordenadas de descarga individual.
-const GLM_SSA_BOUNDS=L.latLngBounds([[-60,-90],[15,-30]]);
-function setGlmStatus(text,state=''){
-  const st=document.querySelector('#glmStatus'); if(!st)return;
-  st.textContent=text; st.classList.remove('live','warn','offline'); if(state)st.classList.add(state);
+const GLM_API=(window.MONI_CONFIG&&window.MONI_CONFIG.glmApiUrl)||((window.MONI_CONFIG?.supabaseUrl||'')+'/functions/v1/glm');
+function setGlmStatus(t,mode=''){const st=document.querySelector('#glmStatus');if(!st)return;st.textContent=t;st.dataset.mode=mode;}
+function glmDot(f){
+  const age=Math.max(0,(Date.now()-new Date(f.time).getTime())/1000);
+  const opacity=age<300?.95:age<600?.65:.35;
+  const radius=age<300?4.2:age<600?3.4:2.7;
+  return L.circleMarker([f.lat,f.lon],{radius,weight:1,color:'#fff2a8',fillColor:'#ffd84a',fillOpacity:opacity,opacity:opacity,interactive:false});
 }
 async function refreshGlm(){
   if(!lightningEnabled)return;
-  const req=++glmRequest;
-  setGlmStatus('ATUALIZANDO…','warn');
-  const url=GLM_NOAA_URL+'?t='+Date.now();
-  // Pré-carrega para distinguir fonte indisponível de uma cena sem atividade.
-  const img=new Image(); img.crossOrigin='anonymous';
-  img.onload=()=>{
-    if(req!==glmRequest||!lightningEnabled)return;
-    if(glmOverlay)lightningLayer.removeLayer(glmOverlay);
-    glmOverlay=L.imageOverlay(url,GLM_SSA_BOUNDS,{opacity:.62,interactive:false,pane:'overlayPane'}).addTo(lightningLayer);
-    glmLastUrl=url;
-    glmFeatures=[]; // FED é densidade em grade; não inventamos pontos individuais.
-    setGlmStatus('NOAA FED · LIVE','live');
-  };
-  img.onerror=()=>{ if(req===glmRequest)setGlmStatus('DADOS INDISPONÍVEIS','offline'); };
-  img.src=url;
+  const req=++glmRequest; setGlmStatus('ATUALIZANDO…','loading');
+  try{
+    const b=map.getBounds();
+    const q=new URLSearchParams({south:String(Math.max(-54,b.getSouth()-2)),west:String(b.getWest()-2),north:String(Math.min(54,b.getNorth()+2)),east:String(b.getEast()+2),minutes:'15'});
+    const r=await fetch(GLM_API+'?'+q,{cache:'no-store'}); if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json(); if(req!==glmRequest||!lightningEnabled)return;
+    lightningLayer.clearLayers();
+    const now=Date.now();
+    glmFeatures=(d.flashes||[]).map(f=>({lat:+f.lat,lon:+f.lon,time:f.time,age:Math.max(0,(now-new Date(f.time).getTime())/1000)})).filter(f=>Number.isFinite(f.lat)&&Number.isFinite(f.lon)&&f.age<=900);
+    glmFeatures.forEach(f=>glmDot(f).addTo(lightningLayer));
+    const ageMin=d.latest?Math.max(0,Math.round((now-new Date(d.latest).getTime())/60000)):null;
+    if(d.source_ok===false)setGlmStatus('DADOS INDISPONÍVEIS','offline');
+    else if(glmFeatures.length===0)setGlmStatus('SEM ATIVIDADE · LIVE','live');
+    else setGlmStatus(`${glmFeatures.length} FLASHES · ${ageMin??0} MIN`,'live');
+    renderPoint();
+  }catch(err){console.warn('GLM',err);if(req===glmRequest)setGlmStatus('DADOS INDISPONÍVEIS','offline');}
 }
 function setGlm(on){
   lightningEnabled=on;
-  if(on){
-    lightningLayer.addTo(map); refreshGlm();
-    clearInterval(glmTimer); glmTimer=setInterval(refreshGlm,5*60*1000);
-  }else{
-    map.removeLayer(lightningLayer); clearInterval(glmTimer); glmTimer=null; glmOverlay=null; glmFeatures=[];
-    setGlmStatus('OFF');
-  }
+  if(on){lightningLayer.addTo(map);refreshGlm();clearInterval(glmTimer);glmTimer=setInterval(refreshGlm,60000);map.on('moveend',refreshGlm);}
+  else{map.removeLayer(lightningLayer);clearInterval(glmTimer);glmTimer=null;glmRequest++;glmFeatures=[];map.off('moveend',refreshGlm);setGlmStatus('OFF');renderPoint();}
 }
 document.querySelector('#lightning').onchange=e=>setGlm(e.target.checked);
 
