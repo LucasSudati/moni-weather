@@ -10,10 +10,13 @@ const base=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Can
 
 map.createPane('satellitePane');
 map.createPane('infraredPane');
+map.createPane('radarPane');
 map.getPane('satellitePane').style.zIndex=250;
 map.getPane('satellitePane').style.pointerEvents='none';
 map.getPane('infraredPane').style.zIndex=260;
 map.getPane('infraredPane').style.pointerEvents='none';
+map.getPane('radarPane').style.zIndex=275;
+map.getPane('radarPane').style.pointerEvents='none';
 
 const weatherLayer=L.layerGroup().addTo(map);
 const stormLayer=L.layerGroup().addTo(map);
@@ -350,6 +353,63 @@ document.querySelector('#wind').onchange=e=>{
 };
 map.on('zoomstart movestart',()=>{if(windEnabled){cancelAnimationFrame(windRaf);clearWindCanvas();for(const c of [arrCv,windCv])c.style.opacity=0;}});
 map.on('moveend resize',()=>{if(windEnabled&&wf)placeWind();});
+
+// Radar meteorológico REDEMET / DECEA — MAXCAPPI.
+// A chave REDEMET nunca chega ao navegador: este frontend consulta somente a Edge Function /radar.
+let radarEnabled=false,radarTimer=null,radarAnimTimer=null,radarPlaying=false,radarReq=0,radarFrameIndex=0;
+let radarFrames=[],radarOverlays=[];
+const RADAR_API=(window.MONI_CONFIG&&window.MONI_CONFIG.radarApiUrl)||((window.MONI_CONFIG?.supabaseUrl||'')+'/functions/v1/radar');
+const RADAR_AREAS=['sg','cn','mi']; // Santiago/RS, Canguçu/RS e Morro da Igreja/SC.
+function setRadarStatus(t,live=false){const e=document.querySelector('#radarStatus');if(!e)return;e.textContent=t;e.classList.toggle('live',live);}
+function radarStamp(ts){if(!ts)return'--';const d=new Date(String(ts).replace(' ','T')+'Z');return Number.isNaN(d.getTime())?String(ts).slice(11,16):d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+'Z';}
+function clearRadarOverlays(){radarOverlays.forEach(x=>map.removeLayer(x));radarOverlays=[];}
+function showRadarFrame(i){
+  if(!radarEnabled||!radarFrames.length)return;
+  radarFrameIndex=((i%radarFrames.length)+radarFrames.length)%radarFrames.length;
+  clearRadarOverlays();const frame=radarFrames[radarFrameIndex],opacity=Number(document.querySelector('#radarOpacity')?.value||58)/100;
+  for(const im of frame.images){
+    const b=im.bounds;if(!b||![b.south,b.west,b.north,b.east].every(Number.isFinite))continue;
+    const ov=L.imageOverlay(im.image,[[b.south,b.west],[b.north,b.east]],{opacity,pane:'radarPane',interactive:false,attribution:'REDEMET / DECEA'}).addTo(map);radarOverlays.push(ov);
+  }
+  document.querySelector('#radarFrame').textContent=`${radarFrameIndex+1}/${radarFrames.length} · ${radarStamp(frame.time)}`;
+}
+function buildRadarFrames(all){
+  // Deduplica a resposta da REDEMET por URL e agrupa radares por horário aproximado (janela de 5 min).
+  const uniq=new Map();for(const im of all){if(im?.image&&!uniq.has(im.image))uniq.set(im.image,im);}
+  const bins=new Map();for(const im of uniq.values()){
+    const ms=Date.parse(String(im.timestamp).replace(' ','T')+'Z');if(!Number.isFinite(ms))continue;
+    const k=Math.round(ms/(5*60000));if(!bins.has(k))bins.set(k,[]);bins.get(k).push(im);
+  }
+  return [...bins.entries()].sort((a,b)=>a[0]-b[0]).map(([k,images])=>({time:new Date(k*5*60000).toISOString(),images}));
+}
+async function refreshRadar(){
+  if(!radarEnabled)return;const req=++radarReq;setRadarStatus('ATUALIZANDO…');
+  try{
+    const jobs=RADAR_AREAS.map(area=>fetch(`${RADAR_API}?area=${area}&tipo=maxcappi&anima=5`,{cache:'no-store'}).then(async r=>{if(!r.ok)throw new Error(`${area}: HTTP ${r.status}`);return r.json();}));
+    const settled=await Promise.allSettled(jobs);if(req!==radarReq||!radarEnabled)return;
+    const images=[];let ok=0;for(const x of settled){if(x.status==='fulfilled'&&x.value?.ok){ok++;images.push(...(x.value.images||[]));}else if(x.status==='rejected')console.warn('Radar REDEMET',x.reason);}
+    radarFrames=buildRadarFrames(images);
+    if(!radarFrames.length){clearRadarOverlays();setRadarStatus('SEM DADOS');document.querySelector('#radarFrame').textContent='--';return;}
+    radarFrameIndex=radarFrames.length-1;showRadarFrame(radarFrameIndex);
+    const newest=radarFrames.at(-1)?.time,age=newest?Math.max(0,Math.round((Date.now()-Date.parse(newest))/60000)):null;
+    setRadarStatus(`${ok}/${RADAR_AREAS.length} · ${age??'--'} MIN`,true);
+  }catch(err){console.warn('Radar',err);setRadarStatus('INDISPONÍVEL');}
+}
+function stopRadarAnimation(){clearInterval(radarAnimTimer);radarAnimTimer=null;radarPlaying=false;const b=document.querySelector('#radarPlay');if(b)b.textContent='▶ ANIMAR RADAR';}
+function toggleRadarAnimation(){
+  if(radarPlaying){stopRadarAnimation();showRadarFrame(radarFrames.length-1);return;}if(radarFrames.length<2)return;
+  radarPlaying=true;document.querySelector('#radarPlay').textContent='■ PARAR ANIMAÇÃO';radarFrameIndex=0;showRadarFrame(0);
+  radarAnimTimer=setInterval(()=>showRadarFrame((radarFrameIndex+1)%radarFrames.length),1100);
+}
+function setRadar(on){
+  radarEnabled=on;document.querySelector('#radarControls').classList.toggle('visible',on);
+  if(on){refreshRadar();clearInterval(radarTimer);radarTimer=setInterval(refreshRadar,120000);}
+  else{radarReq++;clearInterval(radarTimer);radarTimer=null;stopRadarAnimation();clearRadarOverlays();radarFrames=[];setRadarStatus('OFF');document.querySelector('#radarFrame').textContent='--';}
+}
+document.querySelector('#radar').onchange=e=>setRadar(e.target.checked);
+document.querySelector('#radarPlay').onclick=toggleRadarAnimation;
+document.querySelector('#radarOpacity').oninput=e=>{document.querySelector('#radarOpacityValue').textContent=e.target.value+'%';radarOverlays.forEach(x=>x.setOpacity(Number(e.target.value)/100));};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&radarEnabled)refreshRadar();});
 
 // Raios / atividade elétrica NOAA GOES-19 GLM — América do Sul inteira.
 // Mantemos todos os flashes recentes em memória para o Situation Engine, mas a renderização

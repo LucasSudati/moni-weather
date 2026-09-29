@@ -31,6 +31,13 @@
         <input id="satOpacity" type="range" min="10" max="100" value="72" />
       </div>
       <label><input type="checkbox" id="lightning"> Raios <span class="tag-live">NOAA · GLM/FED</span></label>
+      <label><input type="checkbox" id="radar"> Radar meteorológico <span class="tag-live">REDEMET</span></label>
+      <div id="radarControls" class="sat-controls radar-controls">
+        <div class="sat-row"><span>MAXCAPPI · SUL</span><b id="radarFrame">--</b></div>
+        <div class="sat-row"><span>OPACIDADE</span><span id="radarOpacityValue">58%</span></div>
+        <input id="radarOpacity" type="range" min="15" max="90" value="58" />
+        <button id="radarPlay" class="radar-play" type="button">▶ ANIMAR RADAR</button>
+      </div>
       <button id="locateMe" class="locate-btn">◎ MOSTRAR MINHA LOCALIZAÇÃO</button>
       <label><input type="checkbox" id="rain" checked> Precipitação</label>
       <label><input type="checkbox" id="storms" checked> Tempestades</label>
@@ -44,6 +51,7 @@
       <div class="severe-box">
         <div><span>ABI IR</span><b id="irStatus">OFF</b></div>
         <div><span>GLM</span><b id="glmStatus">OFF</b></div>
+        <div><span>RADAR</span><b id="radarStatus">OFF</b></div>
         <div><span>VENTO</span><b id="windStatus">OFF</b></div>
         <div><span>LIMITES</span><b id="borderStatus">CARREGANDO</b></div>
         <div><span>ATUALIZAÇÃO</span><b>5 MIN</b></div>
