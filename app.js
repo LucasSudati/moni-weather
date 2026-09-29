@@ -341,7 +341,7 @@ map.on('zoomstart movestart',()=>{if(windEnabled){cancelAnimationFrame(windRaf);
 map.on('moveend resize',()=>{if(windEnabled&&wf)placeWind();});
 
 // raios no próprio mapa. A API fornece pontos GeoJSON derivados do GOES-19 GLM/NOAA.
-const lightningLayer=L.layerGroup(); let lightningEnabled=false,glmTimer=null,glmRequest=0;
+const lightningLayer=L.layerGroup(); let lightningEnabled=false,glmTimer=null,glmRequest=0,glmFeatures=[];
 function lightningIcon(age){
   const opacity=Math.max(.35,1-Number(age||0)/900);
   return L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:`<div class=\"lightning-marker\" style=\"opacity:${opacity.toFixed(2)}\">⚡</div>`});
@@ -353,9 +353,9 @@ async function refreshGlm(){
     const bbox=[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].map(v=>v.toFixed(3)).join(',');
     const url=`https://atmostorm.com/api/v1/lightning?minutes=15&bbox=${bbox}&limit=5000`;
     const r=await fetchT(url);if(!r.ok)throw Error('HTTP '+r.status);const gj=await r.json();if(req!==glmRequest)return;
-    lightningLayer.clearLayers();let n=0;
+    lightningLayer.clearLayers();glmFeatures=[];let n=0;
     for(const f of (gj.features||[])){const c=f.geometry&&f.geometry.coordinates;if(!c||c.length<2)continue;const pr=f.properties||{};
-      L.circleMarker([c[1],c[0]],{radius:4,weight:1,color:'#ffe066',fillColor:'#ffe066',fillOpacity:Math.max(.35,1-Number(pr.age_seconds||0)/900)}).bindTooltip(`Raio detectado pelo GOES-19<br>${Math.max(0,Math.round((pr.age_seconds||0)/60))} min atrás`).addTo(lightningLayer);n++;}
+      glmFeatures.push({lat:+c[1],lon:+c[0],age:Number(pr.age_seconds||0)}); L.circleMarker([c[1],c[0]],{radius:4,weight:1,color:'#ffe066',fillColor:'#ffe066',fillOpacity:Math.max(.35,1-Number(pr.age_seconds||0)/900)}).bindTooltip(`Raio detectado pelo GOES-19<br>${Math.max(0,Math.round((pr.age_seconds||0)/60))} min atrás`).addTo(lightningLayer);n++;}
     st.textContent=n?`${n} · LIVE`:'SEM RAIOS';st.classList.add('live');
   }catch(err){console.warn('GLM:',err);st.textContent='SEM DADOS';st.classList.remove('live');}
 }
@@ -400,12 +400,11 @@ const LV=[
 function riskAt(v){
   const {cape,gust,precip,li,cin,fz}=v; let l=0;
   if(cape>=800)l=1; if(cape>=1500||gust>=60)l=2; if(cape>=2500||gust>=80)l=3;
-  if(l<3&&li!=null&&li<=-6&&cape>=1000)l++;          // instabilidade extrema
-  if(l>0&&cin!=null&&Math.abs(cin)>200)l--;          // tampa forte inibe a convecção
+  if(l<3&&li!=null&&li<=-6&&cape>=1000)l++;
+  if(l>0&&cin!=null&&Math.abs(cin)>200)l--;
   let n=0; if(cape>=1500)n++; if(cape>=2500)n++; if(li!=null&&li<=-6)n++; if(precip>=4)n++; if(fz!=null&&fz<4500&&cape>=1000)n++;
   return {l,hail:n>=4?'ALTO':n===3?'MODERADO':n>=1?'BAIXO':'MÍNIMO'};
 }
-// Meteocons Flat: ícones coloridos para comunicação civil de risco.
 const METEOCON='assets/meteocons/';
 const RISK_ICONS=['code-green','code-yellow','code-orange','code-red'];
 function meteoIcon(name){return METEOCON+name+'.svg';}
@@ -413,18 +412,28 @@ function iconFallback(img){img.onerror=null;img.src=meteoIcon('code-yellow');}
 function civilAlert(icon,title,text,level='info'){
   return `<div class="civil-alert ${level}"><img src="${meteoIcon(icon)}" alt="" onerror="iconFallback(this)"><div><b>${title}</b><small>${text}</small></div></div>`;
 }
+function kmDist(a,b,c,d){const R=6371,rad=Math.PI/180,dp=(c-a)*rad,dl=(d-b)*rad;const q=Math.sin(dp/2)**2+Math.cos(a*rad)*Math.cos(c*rad)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.sqrt(q));}
+function nearbyLightning(lat,lon,km=50){return glmFeatures.filter(x=>x.age<=900&&kmDist(lat,lon,x.lat,x.lon)<=km);}
+function nearbyWeatherReports(lat,lon,km=25){return reports.filter(r=>rAlive(r)&&['hail_now','storm_now','heavy_rain'].includes(r.k)&&kmDist(lat,lon,r.lat,r.lon)<=km);}
+function wmoSituation(code){code=Number(code);if([96,99].includes(code))return {kind:'hail',level:3,title:'Tempestade com granizo indicada',text:'O modelo meteorológico indica tempestade com granizo neste horário.'};if([95,97].includes(code))return {kind:'storm',level:2,title:'Tempestade indicada',text:'Há indicação de tempestade neste horário.'};if([65,82].includes(code))return {kind:'rain',level:2,title:'Chuva intensa indicada',text:'Há indicação de chuva forte ou pancadas violentas.'};if([63,80,81].includes(code))return {kind:'rain',level:1,title:'Chuva na região',text:'Há indicação de chuva ou pancadas.'};return null;}
+function fuseSituation(v,lat,lon){
+  const base=riskAt(v), evidence=[], w=wmoSituation(v.weatherCode), bolts=nearbyLightning(lat,lon), reps=nearbyWeatherReports(lat,lon); let level=base.l, hail=base.hail;
+  if(w){level=Math.max(level,w.level);evidence.push({...w,source:'modelo'});if(w.kind==='hail')hail='INDICADO';}
+  if(v.precip>=8){level=Math.max(level,2);evidence.push({kind:'rain',level:2,title:'Chuva intensa',text:`Precipitação estimada em ${v.precip.toFixed(1)} mm/h.`,source:'modelo'});} else if(v.precip>=2){level=Math.max(level,1);evidence.push({kind:'rain',level:1,title:'Chuva',text:`Precipitação estimada em ${v.precip.toFixed(1)} mm/h.`,source:'modelo'});}
+  if(bolts.length){level=Math.max(level,bolts.length>=8?2:1);const near=Math.min(...bolts.map(x=>kmDist(lat,lon,x.lat,x.lon)));evidence.push({kind:'lightning',level:bolts.length>=8?2:1,title:'Atividade elétrica próxima',text:`${bolts.length} detecções GLM em até 50 km; mais próxima a ~${Math.round(near)} km.`,source:'satélite'});}
+  for(const r of reps){const t=rType(r.k); if(r.k==='hail_now'){level=Math.max(level,3);hail='RELATADO';}else level=Math.max(level,2);evidence.push({kind:r.k==='hail_now'?'hail':r.k==='storm_now'?'storm':'rain',level:r.k==='hail_now'?3:2,title:t.t+' relatado',text:`Relato da comunidade ${ago(r.ts)} a ~${Math.round(kmDist(lat,lon,r.lat,r.lon))} km.`,source:'comunidade'});}
+  return {level:Math.min(3,level),hail,evidence,bolts,reps};
+}
 function setRisk(L0,details={}){
   const b=document.querySelector('#civilRisk'),txt=document.querySelector('#civilRiskText'),card=document.querySelector('#civilRiskCard'),icon=document.querySelector('#civilRiskIcon');
-  const idx=Math.max(0,LV.indexOf(L0));
-  b.textContent='RISCO '+L0.t;b.style.color=L0.c;txt.textContent=L0.m+' Não substitui alertas oficiais.';
-  card.dataset.level=String(idx);icon.src=meteoIcon(RISK_ICONS[idx]||'alert-triangle');
-  const a=[];
-  if(details.hail==='ALTO'||details.hail==='MODERADO')a.push(civilAlert('code-purple','Possibilidade de granizo',details.hail==='ALTO'?'Condições mais favoráveis a granizo. Procure abrigo seguro.':'Há sinais que merecem atenção para granizo.','danger'));
-  if(Number(details.gust)>=80)a.push(civilAlert('tornado-alert','Vento muito forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'danger'));
-  else if(Number(details.gust)>=60)a.push(civilAlert('code-orange','Vento forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'warning'));
-  if(Number(details.precip)>=8)a.push(civilAlert('code-yellow','Chuva intensa',`Precipitação estimada em ${Number(details.precip).toFixed(1)} mm/h.`,'warning'));
-  if(Number(details.cape)>=1500)a.push(civilAlert('lightning-bolts','Tempestades possíveis','A atmosfera apresenta instabilidade favorável a tempestades.','warning'));
-  document.querySelector('#civilAlerts').innerHTML=a.slice(0,3).join('');
+  const idx=Math.max(0,LV.indexOf(L0));b.textContent='RISCO '+L0.t;b.style.color=L0.c;txt.textContent=L0.m+' Não substitui alertas oficiais.';card.dataset.level=String(idx);icon.src=meteoIcon(RISK_ICONS[idx]);
+  const a=[], ev=details.evidence||[];
+  const hailEv=ev.find(x=>x.kind==='hail'); if(hailEv)a.push(civilAlert('code-purple',hailEv.title,hailEv.text,'danger')); else if(details.hail==='ALTO'||details.hail==='MODERADO')a.push(civilAlert('code-purple','Possibilidade de granizo',details.hail==='ALTO'?'Condições atmosféricas mais favoráveis a granizo.':'Há sinais atmosféricos que merecem atenção para granizo.','danger'));
+  const stormEv=ev.find(x=>x.kind==='storm'); if(stormEv)a.push(civilAlert('lightning-bolts',stormEv.title,stormEv.text,'danger'));
+  const lightEv=ev.find(x=>x.kind==='lightning'); if(lightEv)a.push(civilAlert('lightning-bolts',lightEv.title,lightEv.text,'warning'));
+  const rainEv=ev.find(x=>x.kind==='rain'); if(rainEv)a.push(civilAlert('code-yellow',rainEv.title,rainEv.text,'warning'));
+  if(Number(details.gust)>=80)a.push(civilAlert('tornado-alert','Vento muito forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'danger')); else if(Number(details.gust)>=60)a.push(civilAlert('code-orange','Vento forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'warning'));
+  document.querySelector('#civilAlerts').innerHTML=a.slice(0,4).join('');
   const bar=document.querySelector('#riskBar');bar.innerHTML=`<img src="${icon.src}" alt=""><span>RISCO ${L0.t} — ${L0.m}</span>`;bar.style.borderColor=bar.style.color=L0.c;bar.classList.add('on');
 }
 
@@ -432,24 +441,25 @@ function setRisk(L0,details={}){
 let pt=null;
 async function inspect(lat,lon){
   const p=document.querySelector('#point');p.textContent='Carregando dados...';
-  const hv='relative_humidity_2m,temperature_2m,precipitation,cloud_cover,wind_speed_10m,wind_gusts_10m,cape,lifted_index,convective_inhibition,freezing_level_height';
+  const hv='relative_humidity_2m,temperature_2m,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_gusts_10m,cape,lifted_index,convective_inhibition,freezing_level_height'; const cv='temperature_2m,relative_humidity_2m,precipitation,rain,showers,weather_code,cloud_cover,wind_speed_10m,wind_gusts_10m';
   try{
-    const r=await fetchT(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=${hv}&past_hours=12&forecast_hours=13&wind_speed_unit=kmh&timezone=America%2FSao_Paulo`);
+    const r=await fetchT(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=${cv}&hourly=${hv}&past_hours=12&forecast_hours=13&wind_speed_unit=kmh&timezone=America%2FSao_Paulo`);
     if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();
-    pt={lat,lon,h:d.hourly||{}};renderPoint();
+    pt={lat,lon,h:d.hourly||{},current:d.current||{}}; if(!lightningEnabled){document.querySelector('#lightning').checked=true;setGlm(true);setTimeout(renderPoint,900);} renderPoint();
   }catch(e){p.textContent='Falha ao consultar dados meteorológicos. '+e.message;}
 }
 function renderPoint(){
   if(!pt||!pt.h.time)return;
-  const i=Math.min(Number(timeline.value),pt.h.time.length-1),g=k=>(pt.h[k]||[])[i],n=Number(timeline.value)-12;
-  const v={cape:Number(g('cape')||0),gust:Number(g('wind_gusts_10m')||0),precip:Number(g('precipitation')||0),li:g('lifted_index'),cin:g('convective_inhibition'),fz:g('freezing_level_height')};
-  const R=riskAt(v),L0=LV[R.l];
-  document.querySelector('#point').innerHTML=`${pt.lat.toFixed(3)}, ${pt.lon.toFixed(3)} · ${n===0?'AGORA':n>0?'+'+n+' h':n+' h'}<br><br>TEMP ${g('temperature_2m')??'--'} °C<br>PRECIP ${v.precip} mm/h<br>UMIDADE ${g('relative_humidity_2m')??'--'} %<br>NUVENS ${g('cloud_cover')??'--'} %<br>VENTO ${g('wind_speed_10m')??'--'} km/h<br>RAJADA ${v.gust} km/h<br>CAPE ${v.cape} J/kg<br>LI ${v.li??'--'} · ISOTERMA 0° ${v.fz!=null?Math.round(v.fz):'--'} m<br><br>RISCO ${L0.t}<br>GRANIZO ${R.hail}<br>FOGO (CONDIÇÃO) ${fireWx(Number(g('relative_humidity_2m')),v.gust,v.precip,Number(g('temperature_2m')))}`;
-  setRisk(L0,{...v,hail:R.hail});
+  const i=Math.min(Number(timeline.value),pt.h.time.length-1),g=k=>(pt.h[k]||[])[i],n=Number(timeline.value)-12,cur=pt.current||{},now=n===0;
+  const val=k=>now&&cur[k]!=null?cur[k]:g(k);
+  const v={cape:Number(g('cape')||0),gust:Number(val('wind_gusts_10m')||0),precip:Number(val('precipitation')||0),weatherCode:Number(val('weather_code')||0),li:g('lifted_index'),cin:g('convective_inhibition'),fz:g('freezing_level_height')};
+  const F=fuseSituation(v,pt.lat,pt.lon),L0=LV[F.level];
+  document.querySelector('#point').innerHTML=`${pt.lat.toFixed(3)}, ${pt.lon.toFixed(3)} · ${n===0?'AGORA':n>0?'+'+n+' h':n+' h'}<br><br>TEMP ${val('temperature_2m')??'--'} °C<br>PRECIP ${v.precip} mm/h<br>UMIDADE ${val('relative_humidity_2m')??'--'} %<br>NUVENS ${val('cloud_cover')??'--'} %<br>VENTO ${val('wind_speed_10m')??'--'} km/h<br>RAJADA ${v.gust} km/h<br>CÓDIGO TEMPO ${v.weatherCode||'--'}<br>CAPE ${v.cape} J/kg<br>LI ${v.li??'--'} · ISOTERMA 0° ${v.fz!=null?Math.round(v.fz):'--'} m<br><br>SITUAÇÃO ${L0.t}<br>GRANIZO ${F.hail}<br>RAIOS PRÓXIMOS ${F.bolts.length}<br>RELATOS METEO ${F.reps.length}<br>FOGO (CONDIÇÃO) ${fireWx(Number(val('relative_humidity_2m')),v.gust,v.precip,Number(val('temperature_2m')))}`;
+  setRisk(L0,{...v,hail:F.hail,evidence:F.evidence});
   weatherLayer.clearLayers();stormLayer.clearLayers();hailLayer.clearLayers();
   L.circleMarker([pt.lat,pt.lon],{radius:5,weight:1,color:'#dce7ef',fillColor:'#37a8ff',fillOpacity:.9}).addTo(weatherLayer);
-  if(R.l>0)L.circle([pt.lat,pt.lon],{radius:25000,color:L0.c,weight:1,fillColor:L0.c,fillOpacity:.12}).bindTooltip(L0.t).addTo(stormLayer);
-  if(R.hail==='ALTO'||R.hail==='MODERADO')L.circle([pt.lat,pt.lon],{radius:12000,color:'#d35cff',dashArray:'4 4',weight:2,fillOpacity:0}).bindTooltip('Potencial de granizo: '+R.hail).addTo(hailLayer);
+  if(F.level>0)L.circle([pt.lat,pt.lon],{radius:25000,color:L0.c,weight:1,fillColor:L0.c,fillOpacity:.12}).bindTooltip(L0.t).addTo(stormLayer);
+  if(['ALTO','MODERADO','INDICADO','RELATADO'].includes(F.hail))L.circle([pt.lat,pt.lon],{radius:12000,color:'#d35cff',dashArray:'4 4',weight:2,fillOpacity:0}).bindTooltip('Granizo: '+F.hail).addTo(hailLayer);
 }
 
 // Avisos oficiais do INMET (experimental: formato/CORS da API não verificados; falha com elegância).
@@ -511,6 +521,9 @@ renderLegend();
 const CFG=window.MONI_CONFIG||{},SB_ON=!!(CFG.supabaseUrl&&CFG.supabaseKey);
 const sbFetch=(path,opt={})=>fetch(CFG.supabaseUrl+'/rest/v1/'+path,{...opt,headers:{apikey:CFG.supabaseKey,...(CFG.supabaseKey.startsWith('eyJ')?{Authorization:'Bearer '+CFG.supabaseKey}:{}),'Content-Type':'application/json',...(opt.headers||{})}});
 const RT=[
+ {k:'hail_now',e:'🟣',t:'Granizo agora',c:'#d35cff',g:'meteo'},
+ {k:'storm_now',e:'⛈️',t:'Tempestade forte agora',c:'#ff4d4d',g:'meteo'},
+ {k:'heavy_rain',e:'🌧️',t:'Chuva intensa agora',c:'#4ab8ff',g:'meteo'},
  {k:'shelter',e:'🏠',t:'Abrigo',c:'#43df86',g:'ajuda'},
  {k:'collect',e:'📦',t:'Arrecadação de mantimentos',c:'#43df86',g:'ajuda'},
  {k:'distrib',e:'🍞',t:'Distribuição de mantimentos',c:'#43df86',g:'ajuda'},
@@ -522,7 +535,7 @@ const RT=[
  {k:'power_off',e:'🔌',t:'Sem energia',c:'#ffb14a',g:'servico'},
  {k:'water_on',e:'🚰',t:'Com água',c:'#43df86',g:'servico'},
  {k:'water_off',e:'🚱',t:'Sem água',c:'#ffb14a',g:'servico'}];
-const RTTL={ajuda:48,necessidade:24,perigo:12,servico:12}; // validade em horas
+const RTTL={meteo:3,ajuda:48,necessidade:24,perigo:12,servico:12}; // validade em horas
 const $=q=>document.querySelector(q), rType=k=>RT.find(t=>t.k===k);
 const LSg=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, LSs=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let reports=LSg('moni.reports',[]),myVotes=LSg('moni.votes',{}),rSel=null,lastSend=0;
@@ -557,7 +570,7 @@ async function submitReport(lat,lon){
       else{const er=await x.json().catch(()=>({}));msg=/limite/i.test(er.message||'')?'Limite de relatos atingido. Tente mais tarde.':'Não foi possível enviar; relato salvo só neste aparelho.';}
     }catch(e){msg='Sem conexão: relato salvo só neste aparelho.';}
     LSs('moni.reports',reports);}
-  $('#reportSheet').hidden=true;drawReports();pullReports();map.flyTo([r.lat,r.lon],Math.max(map.getZoom(),13));toast(msg);
+  $('#reportSheet').hidden=true;drawReports();pullReports();if(pt)renderPoint();map.flyTo([r.lat,r.lon],Math.max(map.getZoom(),13));toast(msg);
 }
 const setRep=(t,ok)=>{const el=$('#repStatus');if(el){el.textContent=t;el.classList.toggle('live',!!ok);}};
 async function pullReports(){
