@@ -54,13 +54,14 @@ function buildSatellite(offsetHours=0){
     transparent:true,
     opacity:Number(document.querySelector('#satOpacity')?.value||72)/100,
     pane:'satellitePane',
-    attribution:'NASA GIBS / GOES-East ABI'
+    attribution:'NASA GIBS / GOES-East ABI',
+    _moniRefresh:String(Date.now())
   };
   // Para AGORA deixamos o GIBS escolher o frame mais recente. Para o histórico enviamos TIME.
   if(offsetHours>0) options.time=isoMinute(roundedUtc(offsetHours));
   satelliteLayer=L.tileLayer.wms(GIBS_WMS,options);
   satelliteLayer.on('loading',()=>setSatStatus('CARREGANDO…'));
-  const me=satelliteLayer;me.on('load',()=>{while(stale.length){const o=stale.shift();if(o!==me)map.removeLayer(o);}setSatStatus(offsetHours===0?'ÚLTIMO FRAME':labelTime(roundedUtc(offsetHours)));});
+  const me=satelliteLayer;me.on('load',()=>{while(stale.length){const o=stale.shift();if(o!==me)map.removeLayer(o);}setSatStatus(offsetHours===0?'LIVE · '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):labelTime(roundedUtc(offsetHours)));});
   satelliteLayer.on('tileerror',()=>setSatStatus('SEM FRAME'));
   if(satelliteEnabled) satelliteLayer.addTo(map);
 }
@@ -89,6 +90,7 @@ function irViewportUrl(offsetHours=0){
   const h=Math.max(500,Math.min(2048,Math.round(size.y*scale)));
   const params=new URLSearchParams({SERVICE:'WMS',VERSION:'1.1.1',REQUEST:'GetMap',LAYERS:'GOES-East_ABI_Band13_Clean_Infrared',STYLES:'',FORMAT:'image/png',TRANSPARENT:'true',SRS:'EPSG:3857',BBOX:`${sw[0]},${sw[1]},${ne[0]},${ne[1]}`,WIDTH:String(w),HEIGHT:String(h)});
   if(offsetHours>0)params.set('TIME',isoMinute(roundedUtc(offsetHours)));
+  else params.set('_moni',String(Date.now()));
   return GIBS_WMS+'?'+params.toString();
 }
 function buildInfrared(offsetHours=0){
@@ -144,13 +146,22 @@ document.querySelector('#play').onclick=()=>{
   },1400);
 };
 
-// Atualiza o frame LIVE a cada 5 min, sem recarregar a página.
-setInterval(()=>{
-  if(Number(timeline.value)===12){
-    if(satelliteEnabled)buildSatellite(0);
-    if(infraredEnabled)buildInfrared(0);
-  }
-},300000);
+// O GOES-19 Full Disk é produzido normalmente a cada 10 min.
+// O MONI verifica a fonte a cada 2 min para pegar o novo frame logo após a publicação,
+// usando cache-busting para não ficar preso a tiles/imagens antigas do navegador/CDN.
+let satRefreshTimer=null;
+function refreshLiveSatellite(){
+  if(Number(timeline.value)!==12 || document.hidden || !navigator.onLine)return;
+  if(satelliteEnabled)buildSatellite(0);
+  if(infraredEnabled)buildInfrared(0);
+}
+function startSatelliteRefresh(){
+  clearInterval(satRefreshTimer);
+  satRefreshTimer=setInterval(refreshLiveSatellite,120000);
+}
+startSatelliteRefresh();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshLiveSatellite();});
+window.addEventListener('online',refreshLiveSatellite);
 
 
 // detector experimental de núcleos frios a partir da imagem IR renderizada.
@@ -489,7 +500,7 @@ const fireGOES=L.tileLayer.wms(GIBS_WMS,{layers:FIRE_LAYER_CONFIG.layer,format:'
 const fireLayer=L.layerGroup([fireVIIRS,fireGOES]);
 const setFire=(t,live)=>{const el=document.querySelector('#fireStatus');el.textContent=t;el.classList.toggle('live',!!live);};
 fireVIIRS.on('loading',()=>setFire('CARREGANDO…'));fireVIIRS.on('load',()=>setFire('ATIVO',true));fireVIIRS.on('tileerror',()=>setFire('SEM DADOS'));
-document.querySelector('#fires').onchange=e=>{if(e.target.checked){fireLayer.addTo(map);setFire('CARREGANDO…');}else{map.removeLayer(fireLayer);setFire('OFF');}};
+document.querySelector('#fires').onchange=e=>{document.querySelector('#fireMapBadge')?.classList.toggle('on',e.target.checked);if(e.target.checked){fireLayer.addTo(map);setFire('CARREGANDO…');}else{map.removeLayer(fireLayer);setFire('OFF');}};
 
 
 // ========================= legenda contextual =========================
@@ -524,6 +535,7 @@ const RT=[
  {k:'hail_now',e:'🟣',t:'Granizo agora',c:'#d35cff',g:'meteo'},
  {k:'storm_now',e:'⛈️',t:'Tempestade forte agora',c:'#ff4d4d',g:'meteo'},
  {k:'heavy_rain',e:'🌧️',t:'Chuva intensa agora',c:'#4ab8ff',g:'meteo'},
+ {k:'fire_now',e:'🔥',t:'Incêndio / queimada agora',c:'#ff5a1f',g:'perigo'},
  {k:'shelter',e:'🏠',t:'Abrigo',c:'#43df86',g:'ajuda'},
  {k:'collect',e:'📦',t:'Arrecadação de mantimentos',c:'#43df86',g:'ajuda'},
  {k:'distrib',e:'🍞',t:'Distribuição de mantimentos',c:'#43df86',g:'ajuda'},
@@ -546,7 +558,8 @@ function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeou
 function drawReports(){
   rLayer.clearLayers();reports=reports.filter(rAlive);LSs('moni.reports',reports);
   for(const r of reports){const t=rType(r.k);
-    const mk=L.marker([r.lat,r.lon],{icon:L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],html:`<div class="rp" style="border-color:${t.c}">${t.e}</div>`})});
+    const reportHtml=r.k==='fire_now'?`<div class="rp rp-fire" style="border-color:${t.c}"><img src="${meteoIcon('fire-alert')}" onerror="this.onerror=null;this.src='${meteoIcon('code-red')}'" alt="Incêndio"></div>`:`<div class="rp" style="border-color:${t.c}">${t.e}</div>`;
+    const mk=L.marker([r.lat,r.lon],{icon:L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],html:reportHtml})});
     mk.bindPopup(`<b>${t.e} ${esc(t.t)}</b><br><small>${ago(r.ts)} · ✔ ${r.ok||0} · ✖ ${r.gone||0}</small>${r.note?`<p>${esc(r.note)}</p>`:''}${t.k==='wire'?'<p class="rp-warn">Perigo: mantenha distância e avise a concessionária e a Defesa Civil (199).</p>':''}<div class="rp-btns"><button data-v="ok">✔ Ainda vale</button><button data-v="gone">✖ Não está mais</button></div>`);
     mk.on('popupopen',e=>e.popup.getElement().querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>vote(r.id,b.dataset.v)));
     mk.addTo(rLayer);}
