@@ -354,63 +354,49 @@ document.querySelector('#wind').onchange=e=>{
 map.on('zoomstart movestart',()=>{if(windEnabled){cancelAnimationFrame(windRaf);clearWindCanvas();for(const c of [arrCv,windCv])c.style.opacity=0;}});
 map.on('moveend resize',()=>{if(windEnabled&&wf)placeWind();});
 
-// Radar meteorológico REDEMET / DECEA — MAXCAPPI.
-// A chave REDEMET nunca chega ao navegador: este frontend consulta somente a Edge Function /radar.
+// Radar meteorológico REDEMET / DECEA — MAXCAPPI Brasil.
+// Uma única chamada ao Supabase pede o mosaico nacional. A Edge Function consulta a REDEMET
+// sem "area", que retorna os radares disponíveis em uma resposta. A chave nunca chega ao navegador.
 let radarEnabled=false,radarTimer=null,radarAnimTimer=null,radarPlaying=false,radarReq=0,radarFrameIndex=0;
-let radarFrames=[],radarOverlays=[];
+let radarFrames=[],radarOverlays=[],radarLatest=[];
 const RADAR_API=(window.MONI_CONFIG&&window.MONI_CONFIG.radarApiUrl)||((window.MONI_CONFIG?.supabaseUrl||'')+'/functions/v1/radar');
-const RADAR_AREAS=['al','be','bv','cn','cz','ga','jr','mq','mo','mn','mi','nt','pl','pc','pv','sv','sn','st','sg','sf','ua','sl','sr','tt','tf','tm']; // Todos os radares atualmente documentados pela REDEMET.
 function setRadarStatus(t,live=false){const e=document.querySelector('#radarStatus');if(!e)return;e.textContent=t;e.classList.toggle('live',live);}
-function radarStamp(ts){if(!ts)return'--';const d=new Date(String(ts).replace(' ','T')+'Z');return Number.isNaN(d.getTime())?String(ts).slice(11,16):d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+'Z';}
+function radarDate(ts){if(!ts)return null;const d=new Date(String(ts).replace(' ','T')+'Z');return Number.isNaN(d.getTime())?null:d;}
+function radarStamp(ts){const d=radarDate(ts);return d?d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+'Z':'--';}
 function clearRadarOverlays(){radarOverlays.forEach(x=>map.removeLayer(x));radarOverlays=[];}
-function showRadarFrame(i){
-  if(!radarEnabled||!radarFrames.length)return;
-  radarFrameIndex=((i%radarFrames.length)+radarFrames.length)%radarFrames.length;
-  clearRadarOverlays();const frame=radarFrames[radarFrameIndex],opacity=Number(document.querySelector('#radarOpacity')?.value||58)/100;
-  for(const im of frame.images){
-    const b=im.bounds;if(!b||![b.south,b.west,b.north,b.east].every(Number.isFinite))continue;
+function drawRadarImages(images,label){
+  if(!radarEnabled)return;clearRadarOverlays();const opacity=Number(document.querySelector('#radarOpacity')?.value||58)/100;
+  for(const im of images){const b=im.bounds;if(!b||![b.south,b.west,b.north,b.east].every(Number.isFinite)||!im.image)continue;
     const ov=L.imageOverlay(im.image,[[b.south,b.west],[b.north,b.east]],{opacity,pane:'radarPane',interactive:false,attribution:'REDEMET / DECEA'}).addTo(map);radarOverlays.push(ov);
   }
-  document.querySelector('#radarFrame').textContent=`${radarFrameIndex+1}/${radarFrames.length} · ${radarStamp(frame.time)}`;
+  document.querySelector('#radarFrame').textContent=label||`${images.length} RADARES`;
+}
+function latestPerRadar(all){
+  const by=new Map();for(const im of all){if(!im?.image)continue;const k=String(im.area||im.radar||im.image),t=radarDate(im.timestamp)?.getTime()||0,old=by.get(k),ot=old?(radarDate(old.timestamp)?.getTime()||0):-1;if(!old||t>ot)by.set(k,im);}return [...by.values()];
 }
 function buildRadarFrames(all){
-  // Deduplica a resposta da REDEMET por URL e agrupa radares por horário aproximado (janela de 5 min).
   const uniq=new Map();for(const im of all){if(im?.image&&!uniq.has(im.image))uniq.set(im.image,im);}
-  const bins=new Map();for(const im of uniq.values()){
-    const ms=Date.parse(String(im.timestamp).replace(' ','T')+'Z');if(!Number.isFinite(ms))continue;
-    const k=Math.round(ms/(5*60000));if(!bins.has(k))bins.set(k,[]);bins.get(k).push(im);
-  }
-  return [...bins.entries()].sort((a,b)=>a[0]-b[0]).map(([k,images])=>({time:new Date(k*5*60000).toISOString(),images}));
+  const bins=new Map();for(const im of uniq.values()){const ms=radarDate(im.timestamp)?.getTime();if(!Number.isFinite(ms))continue;const k=Math.round(ms/(10*60000));if(!bins.has(k))bins.set(k,[]);bins.get(k).push(im);}
+  return [...bins.entries()].sort((a,b)=>a[0]-b[0]).map(([k,images])=>({time:new Date(k*10*60000).toISOString(),images}));
 }
+function showRadarFrame(i){if(!radarEnabled||!radarFrames.length)return;radarFrameIndex=((i%radarFrames.length)+radarFrames.length)%radarFrames.length;const f=radarFrames[radarFrameIndex];drawRadarImages(f.images,`${radarFrameIndex+1}/${radarFrames.length} · ${radarStamp(f.time)}`);}
 async function refreshRadar(){
   if(!radarEnabled)return;const req=++radarReq;setRadarStatus('ATUALIZANDO…');
   try{
-    const settled=[];
-    // Lotes pequenos reduzem picos de chamadas na Edge Function/REDEMET.
-    for(let i=0;i<RADAR_AREAS.length;i+=5){
-      const batch=await Promise.allSettled(RADAR_AREAS.slice(i,i+5).map(area=>fetch(`${RADAR_API}?area=${area}&tipo=maxcappi&anima=5`,{cache:'no-store'}).then(async r=>{if(!r.ok)throw new Error(`${area}: HTTP ${r.status}`);return r.json();})));
-      settled.push(...batch);
-      if(req!==radarReq||!radarEnabled)return;
-    }if(req!==radarReq||!radarEnabled)return;
-    const images=[];let ok=0;for(const x of settled){if(x.status==='fulfilled'&&x.value?.ok){ok++;images.push(...(x.value.images||[]));}else if(x.status==='rejected')console.warn('Radar REDEMET',x.reason);}
-    radarFrames=buildRadarFrames(images);
-    if(!radarFrames.length){clearRadarOverlays();setRadarStatus('SEM DADOS');document.querySelector('#radarFrame').textContent='--';return;}
-    radarFrameIndex=radarFrames.length-1;showRadarFrame(radarFrameIndex);
-    const newest=radarFrames.at(-1)?.time,age=newest?Math.max(0,Math.round((Date.now()-Date.parse(newest))/60000)):null;
-    setRadarStatus(`${ok}/${RADAR_AREAS.length} · ${age??'--'} MIN`,true);
-  }catch(err){console.warn('Radar',err);setRadarStatus('INDISPONÍVEL');}
+    const r=await fetch(`${RADAR_API}?area=all&tipo=maxcappi&anima=5`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(req!==radarReq||!radarEnabled)return;if(!data?.ok)throw new Error(data?.error||'REDEMET sem resposta');
+    const images=Array.isArray(data.images)?data.images:[];radarLatest=latestPerRadar(images);radarFrames=buildRadarFrames(images);
+    if(!radarLatest.length){clearRadarOverlays();setRadarStatus('SEM DADOS');document.querySelector('#radarFrame').textContent='--';return;}
+    stopRadarAnimation();drawRadarImages(radarLatest,`${radarLatest.length} RADARES · ATUAL`);
+    const times=radarLatest.map(x=>radarDate(x.timestamp)?.getTime()).filter(Number.isFinite),newest=times.length?Math.max(...times):0,age=newest?Math.max(0,Math.round((Date.now()-newest)/60000)):null;
+    setRadarStatus(`${radarLatest.length} RADARES · ${age??'--'} MIN`,true);
+  }catch(err){console.warn('Radar REDEMET',err);clearRadarOverlays();setRadarStatus('INDISPONÍVEL');document.querySelector('#radarFrame').textContent='--';}
 }
 function stopRadarAnimation(){clearInterval(radarAnimTimer);radarAnimTimer=null;radarPlaying=false;const b=document.querySelector('#radarPlay');if(b)b.textContent='▶ ANIMAR RADAR';}
 function toggleRadarAnimation(){
-  if(radarPlaying){stopRadarAnimation();showRadarFrame(radarFrames.length-1);return;}if(radarFrames.length<2)return;
-  radarPlaying=true;document.querySelector('#radarPlay').textContent='■ PARAR ANIMAÇÃO';radarFrameIndex=0;showRadarFrame(0);
-  radarAnimTimer=setInterval(()=>showRadarFrame((radarFrameIndex+1)%radarFrames.length),1100);
+  if(radarPlaying){stopRadarAnimation();drawRadarImages(radarLatest,`${radarLatest.length} RADARES · ATUAL`);return;}if(radarFrames.length<2)return;
+  radarPlaying=true;document.querySelector('#radarPlay').textContent='■ PARAR ANIMAÇÃO';radarFrameIndex=0;showRadarFrame(0);radarAnimTimer=setInterval(()=>showRadarFrame((radarFrameIndex+1)%radarFrames.length),1100);
 }
-function setRadar(on){
-  radarEnabled=on;document.querySelector('#radarControls').classList.toggle('visible',on);
-  if(on){refreshRadar();clearInterval(radarTimer);radarTimer=setInterval(refreshRadar,120000);}
-  else{radarReq++;clearInterval(radarTimer);radarTimer=null;stopRadarAnimation();clearRadarOverlays();radarFrames=[];setRadarStatus('OFF');document.querySelector('#radarFrame').textContent='--';}
-}
+function setRadar(on){radarEnabled=on;document.querySelector('#radarControls').classList.toggle('visible',on);if(on){refreshRadar();clearInterval(radarTimer);radarTimer=setInterval(refreshRadar,120000);}else{radarReq++;clearInterval(radarTimer);radarTimer=null;stopRadarAnimation();clearRadarOverlays();radarFrames=[];radarLatest=[];setRadarStatus('OFF');document.querySelector('#radarFrame').textContent='--';}}
 document.querySelector('#radar').onchange=e=>setRadar(e.target.checked);
 document.querySelector('#radarPlay').onclick=toggleRadarAnimation;
 document.querySelector('#radarOpacity').oninput=e=>{document.querySelector('#radarOpacityValue').textContent=e.target.value+'%';radarOverlays.forEach(x=>x.setOpacity(Number(e.target.value)/100));};
