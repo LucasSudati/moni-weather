@@ -271,27 +271,52 @@ function drawArrows(){
     ctx.moveTo(hx,hy);ctx.lineTo(hx-Math.cos(a-.5)*4,hy-Math.sin(a-.5)*4);ctx.moveTo(hx,hy);ctx.lineTo(hx-Math.cos(a+.5)*4,hy-Math.sin(a+.5)*4);ctx.stroke();
   }
 }
-function seedP(p){p.x=Math.random()*windCv.width;p.y=Math.random()*windCv.height;p.age=0;p.max=50+Math.random()*90;}
+function seedP(p){
+  p.x=Math.random()*windCv.width;p.y=Math.random()*windCv.height;
+  // Vida curta evita que uma partícula desenhe uma linha enorme com o passar do tempo.
+  p.age=Math.floor(Math.random()*24);p.max=28+Math.random()*38;
+}
+function clearWindCanvas(){
+  const ctx=windCv.getContext('2d');
+  ctx.save();ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  ctx.clearRect(0,0,windCv.width,windCv.height);ctx.restore();
+}
 function windFrame(){
   if(!windEnabled||!wf)return;
   const ctx=windCv.getContext('2d'),w=windCv.width,h=windCv.height;
-  ctx.globalCompositeOperation='destination-out';ctx.fillStyle='rgba(0,0,0,.08)';ctx.fillRect(0,0,w,h);
-  ctx.globalCompositeOperation='source-over';ctx.lineWidth=1.4;ctx.globalAlpha=.85;
+  // Apaga uma fração forte do frame anterior. Isso mantém somente uma cauda curta,
+  // em vez de acumular segmentos durante minutos.
+  ctx.save();
+  ctx.globalCompositeOperation='destination-out';ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(0,0,0,.22)';ctx.fillRect(0,0,w,h);
+  ctx.restore();
+  ctx.save();ctx.globalCompositeOperation='source-over';ctx.lineWidth=1.05;ctx.globalAlpha=.72;ctx.lineCap='round';
   const segs=[[],[],[],[]];
   for(const p of parts){
     sample(p.x,p.y);const sp=Math.hypot(SU,SV);
     if(sp<.5||p.age++>p.max||p.x<0||p.y<0||p.x>w||p.y>h){seedP(p);continue;}
-    const nx=p.x+SU*WK,ny=p.y-SV*WK;segs[wBucket(sp)].push(p.x,p.y,nx,ny);p.x=nx;p.y=ny;
+    // Passo limitado: rajadas fortes não criam traços gigantes em um único frame.
+    const mag=Math.max(.001,sp),step=Math.min(2.4,.45+sp*.035);
+    const nx=p.x+(SU/mag)*step,ny=p.y-(SV/mag)*step;
+    segs[wBucket(sp)].push(p.x,p.y,nx,ny);p.x=nx;p.y=ny;
   }
   segs.forEach((a,b)=>{if(!a.length)return;ctx.strokeStyle=WCOL[b];ctx.beginPath();for(let k=0;k<a.length;k+=4){ctx.moveTo(a[k],a[k+1]);ctx.lineTo(a[k+2],a[k+3]);}ctx.stroke();});
+  ctx.restore();
   windRaf=requestAnimationFrame(windFrame);
 }
 function placeWind(){
   const s=map.getSize();
-  for(const c of [arrCv,windCv]){if(c.width!==s.x||c.height!==s.y){c.width=s.x;c.height=s.y;}L.DomUtil.setPosition(c,map.containerPointToLayerPoint([0,0]));c.style.display='block';c.style.opacity=1;}
-  windCv.getContext('2d').clearRect(0,0,s.x,s.y);
-  const n=Math.max(400,Math.min(1800,Math.round(s.x*s.y/900)));while(parts.length<n){const p={};seedP(p);parts.push(p);}parts.length=n;
-  if(wf){buildLattice();drawArrows();cancelAnimationFrame(windRaf);windRaf=requestAnimationFrame(windFrame);}
+  for(const c of [arrCv,windCv]){
+    if(c.width!==s.x||c.height!==s.y){c.width=s.x;c.height=s.y;}
+    L.DomUtil.setPosition(c,map.containerPointToLayerPoint([0,0]));c.style.display='block';c.style.opacity=1;
+  }
+  // Nesta versão o Canvas animado é a visualização principal. As setas estáticas
+  // ficam ocultas para evitar a malha dupla e a poluição visual.
+  arrCv.style.display='none';arrCv.getContext('2d').clearRect(0,0,arrCv.width,arrCv.height);
+  clearWindCanvas();
+  const n=Math.max(550,Math.min(2200,Math.round(s.x*s.y/700)));
+  parts.length=0;for(let i=0;i<n;i++){const p={};seedP(p);parts.push(p);}
+  if(wf){buildLattice();cancelAnimationFrame(windRaf);windRaf=requestAnimationFrame(windFrame);}
 }
 async function refreshWind(){
   if(!windEnabled)return;const req=++windRequest,b=map.getBounds(),sz=map.getSize();
@@ -312,7 +337,7 @@ document.querySelector('#wind').onchange=e=>{
   if(windEnabled){placeWind();refreshWind();}
   else{cancelAnimationFrame(windRaf);for(const c of [arrCv,windCv]){c.getContext('2d').clearRect(0,0,c.width,c.height);c.style.display='none';}st.textContent='OFF';st.classList.remove('live');}
 };
-map.on('zoomstart',()=>{if(windEnabled)for(const c of [arrCv,windCv])c.style.opacity=0;});
+map.on('zoomstart movestart',()=>{if(windEnabled){cancelAnimationFrame(windRaf);clearWindCanvas();for(const c of [arrCv,windCv])c.style.opacity=0;}});
 map.on('moveend resize',()=>{if(windEnabled&&wf)placeWind();});
 
 // raios no próprio mapa. A API fornece pontos GeoJSON derivados do GOES-19 GLM/NOAA.
