@@ -15,7 +15,14 @@
   </header>
   <main>
     <aside>
-      <div class="civil-risk"><span>EM TESTES</span><b id="civilRisk">CONSULTE O MAPA</b><small>Clique na sua cidade para uma leitura simples.</small></div><div id="alerts" class="small">Avisos INMET: consultando…</div><h3>CAMADAS</h3>
+      <div class="civil-risk" id="civilRiskCard">
+        <div class="civil-risk-main">
+          <img id="civilRiskIcon" class="risk-icon" src="https://cdn.meteocons.com/0.1.0/svg-static/flat/thermometer.svg" alt="Situação meteorológica">
+          <div><span>EM TESTES</span><b id="civilRisk">CONSULTE O MAPA</b><small id="civilRiskText">Clique na sua cidade para uma leitura simples.</small></div>
+        </div>
+        <div id="civilAlerts" class="civil-alerts" aria-live="polite"></div>
+      </div>
+      <div id="alerts" class="small">Avisos INMET: consultando…</div><h3>CAMADAS</h3>
       <label><input type="checkbox" id="sat"> Satélite GOES-19</label>
       <label><input type="checkbox" id="ir"> Nuvens de tempestade <span class="tech">IR</span></label>
       <div id="satControls" class="sat-controls">

@@ -405,10 +405,26 @@ function riskAt(v){
   let n=0; if(cape>=1500)n++; if(cape>=2500)n++; if(li!=null&&li<=-6)n++; if(precip>=4)n++; if(fz!=null&&fz<4500&&cape>=1000)n++;
   return {l,hail:n>=4?'ALTO':n===3?'MODERADO':n>=1?'BAIXO':'MÍNIMO'};
 }
-function setRisk(L0){
-  const b=document.querySelector('#civilRisk');b.textContent='RISCO '+L0.t;b.style.color=L0.c;
-  b.nextElementSibling.textContent=L0.m+' Não substitui alertas oficiais.';
-  const bar=document.querySelector('#riskBar');bar.textContent='RISCO '+L0.t+' — '+L0.m;bar.style.borderColor=bar.style.color=L0.c;bar.classList.add('on');
+// Meteocons Flat: ícones coloridos para comunicação civil de risco.
+const METEOCON='https://cdn.meteocons.com/0.1.0/svg-static/flat/';
+const RISK_ICONS=['thermometer','alert-triangle','flag-storm-warning','thunderstorms'];
+function meteoIcon(name){return METEOCON+name+'.svg';}
+function civilAlert(icon,title,text,level='info'){
+  return `<div class="civil-alert ${level}"><img src="${meteoIcon(icon)}" alt=""><div><b>${title}</b><small>${text}</small></div></div>`;
+}
+function setRisk(L0,details={}){
+  const b=document.querySelector('#civilRisk'),txt=document.querySelector('#civilRiskText'),card=document.querySelector('#civilRiskCard'),icon=document.querySelector('#civilRiskIcon');
+  const idx=Math.max(0,LV.indexOf(L0));
+  b.textContent='RISCO '+L0.t;b.style.color=L0.c;txt.textContent=L0.m+' Não substitui alertas oficiais.';
+  card.dataset.level=String(idx);icon.src=meteoIcon(RISK_ICONS[idx]||'alert-triangle');
+  const a=[];
+  if(details.hail==='ALTO'||details.hail==='MODERADO')a.push(civilAlert('hail','Possibilidade de granizo',details.hail==='ALTO'?'Condições mais favoráveis a granizo. Procure abrigo seguro.':'Há sinais que merecem atenção para granizo.','danger'));
+  if(Number(details.gust)>=80)a.push(civilAlert('flag-gale-warning','Vento muito forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'danger'));
+  else if(Number(details.gust)>=60)a.push(civilAlert('wind','Vento forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'warning'));
+  if(Number(details.precip)>=8)a.push(civilAlert('extreme-rain','Chuva intensa',`Precipitação estimada em ${Number(details.precip).toFixed(1)} mm/h.`,'warning'));
+  if(Number(details.cape)>=1500)a.push(civilAlert('thunderstorms','Tempestades possíveis','A atmosfera apresenta instabilidade favorável a tempestades.','warning'));
+  document.querySelector('#civilAlerts').innerHTML=a.slice(0,3).join('');
+  const bar=document.querySelector('#riskBar');bar.innerHTML=`<img src="${icon.src}" alt=""><span>RISCO ${L0.t} — ${L0.m}</span>`;bar.style.borderColor=bar.style.color=L0.c;bar.classList.add('on');
 }
 
 // Ponto selecionado: observação (-12h) + previsão (+12h) do Open-Meteo, ligada à timeline.
@@ -428,7 +444,7 @@ function renderPoint(){
   const v={cape:Number(g('cape')||0),gust:Number(g('wind_gusts_10m')||0),precip:Number(g('precipitation')||0),li:g('lifted_index'),cin:g('convective_inhibition'),fz:g('freezing_level_height')};
   const R=riskAt(v),L0=LV[R.l];
   document.querySelector('#point').innerHTML=`${pt.lat.toFixed(3)}, ${pt.lon.toFixed(3)} · ${n===0?'AGORA':n>0?'+'+n+' h':n+' h'}<br><br>TEMP ${g('temperature_2m')??'--'} °C<br>PRECIP ${v.precip} mm/h<br>UMIDADE ${g('relative_humidity_2m')??'--'} %<br>NUVENS ${g('cloud_cover')??'--'} %<br>VENTO ${g('wind_speed_10m')??'--'} km/h<br>RAJADA ${v.gust} km/h<br>CAPE ${v.cape} J/kg<br>LI ${v.li??'--'} · ISOTERMA 0° ${v.fz!=null?Math.round(v.fz):'--'} m<br><br>RISCO ${L0.t}<br>GRANIZO ${R.hail}<br>FOGO (CONDIÇÃO) ${fireWx(Number(g('relative_humidity_2m')),v.gust,v.precip,Number(g('temperature_2m')))}`;
-  setRisk(L0);
+  setRisk(L0,{...v,hail:R.hail});
   weatherLayer.clearLayers();stormLayer.clearLayers();hailLayer.clearLayers();
   L.circleMarker([pt.lat,pt.lon],{radius:5,weight:1,color:'#dce7ef',fillColor:'#37a8ff',fillOpacity:.9}).addTo(weatherLayer);
   if(R.l>0)L.circle([pt.lat,pt.lon],{radius:25000,color:L0.c,weight:1,fillColor:L0.c,fillOpacity:.12}).bindTooltip(L0.t).addTo(stormLayer);
