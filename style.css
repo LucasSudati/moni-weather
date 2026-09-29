@@ -170,3 +170,13 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 /* REDEMET radar */
 .leaflet-pane.leaflet-radarPane-pane img{image-rendering:auto!important;mix-blend-mode:screen}
 .radar-controls{margin-bottom:8px}.radar-play{width:100%;margin-top:7px;padding:7px;border:1px solid rgba(74,184,255,.25);border-radius:7px;background:rgba(74,184,255,.08);color:#9dd8ff;font:600 9px Consolas,monospace;letter-spacing:.6px;cursor:pointer}.radar-play:hover{background:rgba(74,184,255,.16)}
+
+/* MONI MAXCAPPI Analyzer v5.4 */
+.leaflet-pane.leaflet-maxcappiPane-pane{z-index:430;pointer-events:auto}
+.maxcappi-controls{margin-bottom:8px}.maxcappi-controls.visible{display:block}
+.maxcappi-controls .sub-layer{display:flex;align-items:center;gap:7px;margin:7px 0!important;padding:0!important;font-size:10px!important;color:#aebbc5}
+.maxcappi-note{margin-top:7px;color:#70818e;font:8px/1.35 Consolas,monospace}
+.maxcappi-cell{background:transparent;border:0}.maxcappi-dot{width:13px;height:13px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #071018,0 0 12px currentColor;background:currentColor}
+.maxcappi-label{background:#071018e8!important;border:1px solid #ffffff22!important;color:#dce8ef!important;box-shadow:none!important;font:8px/1 Consolas,monospace!important;padding:3px 5px!important;border-radius:5px!important}
+.maxcappi-label:before{display:none!important}
+.maxcappi-popup{min-width:220px;font:11px/1.45 Consolas,monospace;color:#d8e4ea}.maxcappi-popup b{font-size:12px}.maxcappi-popup .mc-grid{display:grid;grid-template-columns:1fr auto;gap:3px 12px;margin-top:7px}.maxcappi-popup .mc-muted{color:#80919d}.maxcappi-popup .mc-good{color:#6fe3a1}.maxcappi-popup .mc-warn{color:#ffd36a}.maxcappi-popup .mc-bad{color:#ff7777}.maxcappi-popup hr{border:0;border-top:1px solid #ffffff18;margin:8px 0}

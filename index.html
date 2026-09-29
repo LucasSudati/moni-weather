@@ -38,6 +38,15 @@
         <input id="radarOpacity" type="range" min="15" max="90" value="58" />
         <button id="radarPlay" class="radar-play" type="button">▶ ANIMAR RADAR</button>
       </div>
+      <label><input type="checkbox" id="maxcappiCells"> Células de tempestade <span class="tag-live">MONI · V5.4</span></label>
+      <div id="maxcappiControls" class="sat-controls maxcappi-controls">
+        <div class="sat-row"><span>TRACKING MAXCAPPI</span><b id="maxcappiStatus">OFF</b></div>
+        <label class="sub-layer"><input type="checkbox" id="maxcappiTracks" checked> Trajetória observada</label>
+        <label class="sub-layer"><input type="checkbox" id="maxcappiForecast" checked> Previsão 15–60 min</label>
+        <label class="sub-layer"><input type="checkbox" id="maxcappiLabels" checked> Identificação</label>
+        <button id="maxcappiRefresh" class="radar-play" type="button">↻ ATUALIZAR ANÁLISE</button>
+        <div class="maxcappi-note">Experimental · previsão por extrapolação do deslocamento observado.</div>
+      </div>
       <button id="locateMe" class="locate-btn">◎ MOSTRAR MINHA LOCALIZAÇÃO</button>
       <label><input type="checkbox" id="rain" checked> Precipitação</label>
       <label><input type="checkbox" id="storms" checked> Tempestades</label>

@@ -729,3 +729,64 @@ map.on('click',e=>{if(!window._pickMode)return;endPick();submitReport(e.latlng.l
 $('#reports').onchange=e=>e.target.checked?rLayer.addTo(map):map.removeLayer(rLayer);
 drawReports();pullReports();setInterval(()=>{drawReports();pullReports();},60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)pullReports();});
+
+// ============================================================
+// MONI MAXCAPPI Analyzer v5.4 — células + tracking + nowcast
+// ============================================================
+map.createPane('maxcappiPane');
+map.getPane('maxcappiPane').style.zIndex=430;
+const maxcappiLayer=L.layerGroup();
+const maxcappiCellLayer=L.layerGroup().addTo(maxcappiLayer);
+const maxcappiTrackLayer=L.layerGroup().addTo(maxcappiLayer);
+const maxcappiForecastLayer=L.layerGroup().addTo(maxcappiLayer);
+const MAXCAPPI_ANALYZE_API=(window.MONI_CONFIG&&window.MONI_CONFIG.maxcappiAnalyzeUrl)||((window.MONI_CONFIG?.supabaseUrl||'')+'/functions/v1/maxcappi-analyze');
+let maxcappiEnabled=false,maxcappiReq=0,maxcappiData=null;
+const maxcappiClientHistory=new Map();
+
+function mcNum(v,d=1){return Number.isFinite(Number(v))?Number(v).toFixed(d):'--';}
+function mcEsc(v){return String(v??'--').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function mcColor(cell){
+  const i=String(cell?.intensity||'').toLowerCase();
+  if(i==='extreme')return '#d94cff'; if(i==='severe')return '#ff4f57'; if(i==='very_strong')return '#ff8b38'; if(i==='strong')return '#ffd84d'; if(i==='moderate')return '#5ee57c'; return '#57c7ff';
+}
+function mcQuality(t){
+  const q=Number(t?.track_quality_score);
+  if(!Number.isFinite(q))return ['SEM HISTÓRICO','mc-muted'];
+  if(q>=.78)return ['ALTA','mc-good']; if(q>=.58)return ['MODERADA','mc-warn']; return ['BAIXA','mc-bad'];
+}
+function mcTrend(t){const x=t?.trend?.classification;return x==='intensifying'?'INTENSIFICANDO':x==='weakening'?'ENFRAQUECENDO':x==='stable'?'ESTÁVEL':'--';}
+function mcForecastStatus(t){if(t?.forecast_status==='available')return 'DISPONÍVEL';if(t?.forecast_status==='blocked')return 'BLOQUEADA';return 'HISTÓRICO INSUFICIENTE';}
+function setMaxcappiStatus(text,live=false){const e=document.querySelector('#maxcappiStatus');if(!e)return;e.textContent=text;e.classList.toggle('live',live);}
+function clearMaxcappi(){maxcappiCellLayer.clearLayers();maxcappiTrackLayer.clearLayers();maxcappiForecastLayer.clearLayers();}
+function rememberMaxcappi(cells){
+  const alive=new Set();
+  for(const c of cells){const id=c.tracking_id;if(!id)continue;alive.add(id);const a=maxcappiClientHistory.get(id)||[];const last=a[a.length-1];if(!last||Math.abs(last.lat-c.lat)>.00001||Math.abs(last.lon-c.lon)>.00001)a.push({lat:Number(c.lat),lon:Number(c.lon),at:c.observed_at});while(a.length>8)a.shift();maxcappiClientHistory.set(id,a);}
+  if(maxcappiClientHistory.size>2500)for(const k of maxcappiClientHistory.keys())if(!alive.has(k))maxcappiClientHistory.delete(k);
+}
+function mcPopup(c){
+  const t=c.tracking||{},[ql,qc]=mcQuality(t),speed=t.smoothed_speed_kmh??t.speed_kmh,dir=t.smoothed_direction??t.direction;
+  const validations=Array.isArray(t.forecast_validations)?t.forecast_validations.filter(v=>Number.isFinite(Number(v.error_km))):[];
+  const val=validations.length?`<hr><div class="mc-muted">VALIDAÇÃO DO NOWCAST</div>${validations.map(v=>`<div>${mcEsc(v.target_minutes)} min · erro ${mcNum(v.error_km,1)} km · ${mcEsc(String(v.quality||'').toUpperCase())}</div>`).join('')}`:'';
+  return `<div class="maxcappi-popup"><b>${mcEsc(c.tracking_id||c.id||'CÉLULA')}</b><div class="mc-grid"><span>Intensidade</span><b>${mcEsc(String(c.intensity||'--').toUpperCase())}</b><span>Máx. estimado</span><b>${mcNum(c.max_estimated_dbz,1)} dBZ</b><span>Área aprox.</span><b>${mcNum(c.approximate_area_km2,1)} km²</b><span>Núcleos</span><b>${mcEsc(c.core_count??0)}</b><span>Movimento</span><b>${mcEsc(dir||'--')} · ${mcNum(speed,1)} km/h</b><span>Tendência</span><b>${mcTrend(t)}</b><span>Rastreamento</span><b class="${qc}">${ql}</b><span>Previsão</span><b>${mcForecastStatus(t)}</b></div>${val}<hr><div class="mc-muted">Observação: ${mcEsc(c.observed_at||'--')}<br>Forecast é extrapolação linear experimental, não alerta oficial.</div></div>`;
+}
+function drawMaxcappi(data){
+  clearMaxcappi();if(!maxcappiEnabled)return;
+  const cells=Array.isArray(data?.cells)?data.cells:[];rememberMaxcappi(cells);
+  const showTracks=document.querySelector('#maxcappiTracks')?.checked!==false,showForecast=document.querySelector('#maxcappiForecast')?.checked!==false,showLabels=document.querySelector('#maxcappiLabels')?.checked!==false;
+  for(const c of cells){if(!Number.isFinite(Number(c.lat))||!Number.isFinite(Number(c.lon)))continue;const ll=[Number(c.lat),Number(c.lon)],color=mcColor(c),t=c.tracking||{};
+    const marker=L.circleMarker(ll,{pane:'maxcappiPane',radius:c.has_magenta?7:5,color:'#071018',weight:2,fillColor:color,fillOpacity:.9,interactive:true}).bindPopup(mcPopup(c),{maxWidth:330});
+    if(showLabels&&c.tracking_id)marker.bindTooltip(String(c.tracking_id),{direction:'top',offset:[0,-6],className:'maxcappi-label',opacity:.9});marker.addTo(maxcappiCellLayer);
+    if(showTracks&&c.tracking_id){const h=maxcappiClientHistory.get(c.tracking_id)||[];if(h.length>1)L.polyline(h.map(p=>[p.lat,p.lon]),{pane:'maxcappiPane',color,weight:2,opacity:.7}).addTo(maxcappiTrackLayer);}
+    const fc=Array.isArray(t.forecast)?t.forecast:[];
+    if(showForecast&&t.forecast_status==='available'&&fc.length){const pts=[ll,...fc.filter(p=>Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon))).map(p=>[Number(p.lat),Number(p.lon)])];if(pts.length>1)L.polyline(pts,{pane:'maxcappiPane',color,weight:2,opacity:.8,dashArray:'5 7'}).addTo(maxcappiForecastLayer);for(const p of fc){if(!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lon)))continue;L.circleMarker([Number(p.lat),Number(p.lon)],{pane:'maxcappiPane',radius:3,color,weight:1,fillColor:'#071018',fillOpacity:.85,interactive:true}).bindTooltip(`+${p.minutes} min`,{permanent:true,direction:'right',offset:[4,0],className:'maxcappi-label',opacity:.85}).addTo(maxcappiForecastLayer);}}
+  }
+}
+async function refreshMaxcappi(){
+  if(!maxcappiEnabled)return;const req=++maxcappiReq;setMaxcappiStatus('ANALISANDO…');
+  try{const r=await fetch(MAXCAPPI_ANALYZE_API,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(req!==maxcappiReq||!maxcappiEnabled)return;if(!data?.ok)throw new Error(data?.error||'Analyzer sem resposta');maxcappiData=data;drawMaxcappi(data);const n=Array.isArray(data.cells)?data.cells.length:0,a=Number(data?.tracking?.available_forecasts||0);setMaxcappiStatus(`${n} CÉL · ${a} PREV`,true);
+  }catch(err){console.warn('MAXCAPPI Analyzer',err);setMaxcappiStatus('INDISPONÍVEL');clearMaxcappi();}
+}
+function setMaxcappi(on){maxcappiEnabled=on;document.querySelector('#maxcappiControls')?.classList.toggle('visible',on);if(on){map.addLayer(maxcappiLayer);refreshMaxcappi();}else{maxcappiReq++;map.removeLayer(maxcappiLayer);clearMaxcappi();setMaxcappiStatus('OFF');}}
+document.querySelector('#maxcappiCells').onchange=e=>setMaxcappi(e.target.checked);
+document.querySelector('#maxcappiRefresh').onclick=refreshMaxcappi;
+for(const id of ['maxcappiTracks','maxcappiForecast','maxcappiLabels'])document.querySelector('#'+id).onchange=()=>{if(maxcappiData)drawMaxcappi(maxcappiData);};

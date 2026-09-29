@@ -1,2 +1,5 @@
 [functions.glm]
 verify_jwt = false
+
+[functions.maxcappi-analyze]
+verify_jwt = false

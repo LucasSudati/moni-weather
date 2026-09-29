@@ -9,3 +9,6 @@ window.MONI_CONFIG.glmApiUrl = window.MONI_CONFIG.glmApiUrl || (window.MONI_CONF
 
 // Radar REDEMET: a API key permanece apenas no Secret REDEMET_API_KEY da Edge Function.
 window.MONI_CONFIG.radarApiUrl = window.MONI_CONFIG.radarApiUrl || (window.MONI_CONFIG.supabaseUrl + '/functions/v1/radar');
+
+// MONI MAXCAPPI Analyzer v5.4 — células, tracking e nowcast.
+window.MONI_CONFIG.maxcappiAnalyzeUrl = window.MONI_CONFIG.maxcappiAnalyzeUrl || (window.MONI_CONFIG.supabaseUrl + '/functions/v1/maxcappi-analyze');
