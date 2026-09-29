@@ -156,3 +156,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 /* alerta de incêndio no mapa */
 #fireMapBadge{display:none;position:absolute;right:12px;bottom:14px;z-index:890;align-items:center;gap:8px;padding:7px 10px;border-radius:12px;background:#0b1016e8;border:1px solid rgba(255,90,31,.55);color:#ffb08d;font:9px/1.2 Consolas,monospace;letter-spacing:.08em;pointer-events:none;backdrop-filter:blur(8px)}
 #fireMapBadge.on{display:flex}#fireMapBadge img{width:30px;height:30px}.rp-fire{padding:2px}.rp-fire img{width:24px;height:24px;display:block}
+
+/* UI FIX: keep fire status clear of the report button; zoom remains gesture/wheel only */
+#fireMapBadge{right:14px;bottom:112px}
+@media(max-width:760px){#fireMapBadge{right:10px;bottom:108px;max-width:calc(100vw - 20px)}#fireMapBadge span{white-space:normal}}
+.leaflet-control-zoom{display:none!important}

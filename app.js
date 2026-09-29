@@ -1,4 +1,4 @@
-const map=L.map('map',{zoomControl:true,preferCanvas:true}).setView([-29.19,-54.87],6);
+const map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([-29.19,-54.87],6);
 
 // Mapa-base sem chave de API. O filtro CSS mantém a identidade visual escura.
 const base=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{
