@@ -161,3 +161,5 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 #fireMapBadge{right:14px;bottom:112px}
 @media(max-width:760px){#fireMapBadge{right:10px;bottom:108px;max-width:calc(100vw - 20px)}#fireMapBadge span{white-space:normal}}
 .leaflet-control-zoom{display:none!important}
+
+#glmStatus.warn{color:#ffd36a!important} #glmStatus.offline{color:#ff7070!important}

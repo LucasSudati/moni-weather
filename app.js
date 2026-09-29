@@ -351,26 +351,48 @@ document.querySelector('#wind').onchange=e=>{
 map.on('zoomstart movestart',()=>{if(windEnabled){cancelAnimationFrame(windRaf);clearWindCanvas();for(const c of [arrCv,windCv])c.style.opacity=0;}});
 map.on('moveend resize',()=>{if(windEnabled&&wf)placeWind();});
 
-// raios no próprio mapa. A API fornece pontos GeoJSON derivados do GOES-19 GLM/NOAA.
-const lightningLayer=L.layerGroup(); let lightningEnabled=false,glmTimer=null,glmRequest=0,glmFeatures=[];
-function lightningIcon(age){
-  const opacity=Math.max(.35,1-Number(age||0)/900);
-  return L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],html:`<div class=\"lightning-marker\" style=\"opacity:${opacity.toFixed(2)}\">⚡</div>`});
+// Raios / atividade elétrica NOAA GOES-19 GLM — América do Sul (setor sul).
+// Usa o produto oficial Flash Extent Density (EXTENT3), atualizado pela NOAA em ~5 min.
+// A camada é tratada como densidade de atividade elétrica, não como descargas em solo.
+const lightningLayer=L.layerGroup();
+let lightningEnabled=false,glmTimer=null,glmRequest=0,glmFeatures=[];
+let glmOverlay=null, glmLastUrl='';
+const GLM_NOAA_URL='https://cdn.star.nesdis.noaa.gov/GOES19/GLM/SECTOR/ssa/EXTENT3/1800x1080.jpg';
+// Extensão cartográfica do setor South America - Southern. Mantemos a imagem somente
+// como visualização NOAA; ela não é convertida em coordenadas de descarga individual.
+const GLM_SSA_BOUNDS=L.latLngBounds([[-60,-90],[15,-30]]);
+function setGlmStatus(text,state=''){
+  const st=document.querySelector('#glmStatus'); if(!st)return;
+  st.textContent=text; st.classList.remove('live','warn','offline'); if(state)st.classList.add(state);
 }
 async function refreshGlm(){
-  if(!lightningEnabled)return; const req=++glmRequest,st=document.querySelector('#glmStatus'),b=map.getBounds();
-  st.textContent='CARREGANDO';st.classList.remove('live');
-  try{
-    const bbox=[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].map(v=>v.toFixed(3)).join(',');
-    const url=`https://atmostorm.com/api/v1/lightning?minutes=15&bbox=${bbox}&limit=5000`;
-    const r=await fetchT(url);if(!r.ok)throw Error('HTTP '+r.status);const gj=await r.json();if(req!==glmRequest)return;
-    lightningLayer.clearLayers();glmFeatures=[];let n=0;
-    for(const f of (gj.features||[])){const c=f.geometry&&f.geometry.coordinates;if(!c||c.length<2)continue;const pr=f.properties||{};
-      glmFeatures.push({lat:+c[1],lon:+c[0],age:Number(pr.age_seconds||0)}); L.circleMarker([c[1],c[0]],{radius:4,weight:1,color:'#ffe066',fillColor:'#ffe066',fillOpacity:Math.max(.35,1-Number(pr.age_seconds||0)/900)}).bindTooltip(`Raio detectado pelo GOES-19<br>${Math.max(0,Math.round((pr.age_seconds||0)/60))} min atrás`).addTo(lightningLayer);n++;}
-    st.textContent=n?`${n} · LIVE`:'SEM RAIOS';st.classList.add('live');
-  }catch(err){console.warn('GLM:',err);st.textContent='SEM DADOS';st.classList.remove('live');}
+  if(!lightningEnabled)return;
+  const req=++glmRequest;
+  setGlmStatus('ATUALIZANDO…','warn');
+  const url=GLM_NOAA_URL+'?t='+Date.now();
+  // Pré-carrega para distinguir fonte indisponível de uma cena sem atividade.
+  const img=new Image(); img.crossOrigin='anonymous';
+  img.onload=()=>{
+    if(req!==glmRequest||!lightningEnabled)return;
+    if(glmOverlay)lightningLayer.removeLayer(glmOverlay);
+    glmOverlay=L.imageOverlay(url,GLM_SSA_BOUNDS,{opacity:.62,interactive:false,pane:'overlayPane'}).addTo(lightningLayer);
+    glmLastUrl=url;
+    glmFeatures=[]; // FED é densidade em grade; não inventamos pontos individuais.
+    setGlmStatus('NOAA FED · LIVE','live');
+  };
+  img.onerror=()=>{ if(req===glmRequest)setGlmStatus('DADOS INDISPONÍVEIS','offline'); };
+  img.src=url;
 }
-function setGlm(on){lightningEnabled=on;if(on){lightningLayer.addTo(map);refreshGlm();clearInterval(glmTimer);glmTimer=setInterval(refreshGlm,60000);}else{map.removeLayer(lightningLayer);clearInterval(glmTimer);glmTimer=null;document.querySelector('#glmStatus').textContent='OFF';document.querySelector('#glmStatus').classList.remove('live');}}
+function setGlm(on){
+  lightningEnabled=on;
+  if(on){
+    lightningLayer.addTo(map); refreshGlm();
+    clearInterval(glmTimer); glmTimer=setInterval(refreshGlm,5*60*1000);
+  }else{
+    map.removeLayer(lightningLayer); clearInterval(glmTimer); glmTimer=null; glmOverlay=null; glmFeatures=[];
+    setGlmStatus('OFF');
+  }
+}
 document.querySelector('#lightning').onchange=e=>setGlm(e.target.checked);
 
 // Próxima etapa: hotspots/FRP. A camada FireTemp já está pré-configurada, mas não é tratada como foco confirmado.
@@ -392,7 +414,7 @@ locateBtn.onclick=()=>{
     map.flyTo([lat,lon],Math.max(map.getZoom(),9));locateBtn.textContent='● MINHA LOCALIZAÇÃO';locateBtn.classList.add('active');inspect(lat,lon);
   },err=>{locateBtn.textContent=err.code===1?'PERMISSÃO DE LOCALIZAÇÃO NEGADA':'NÃO FOI POSSÍVEL LOCALIZAR';},{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
 };
-map.on('moveend',()=>{if(lightningEnabled){clearTimeout(window._gm);window._gm=setTimeout(refreshGlm,400);}});
+
 
 
 function fetchT(u,ms=10000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t));}
