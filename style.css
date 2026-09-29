@@ -18,7 +18,7 @@
 
 /* vento, GLM, limites territoriais e preparação para queimadas */
 .tag-live,.tag-ready{font-size:7px;padding:1px 4px;margin-left:5px;letter-spacing:.7px}
-.tag-live{color:#43df86;border:1px solid #24633d}.tag-ready{color:#d35cff;border:1px solid #63306f}
+.tag-live{color:#43df86;border:1px solid #24633d}.tag-ready{color:#d35cff;border:1px solid #0da697}
 .future-layer{opacity:.62}.leaflet-pane.leaflet-boundaryPane-pane{pointer-events:none}
 .boundary-state{filter:drop-shadow(0 0 2px #000)}
 
