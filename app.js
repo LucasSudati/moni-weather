@@ -351,42 +351,86 @@ document.querySelector('#wind').onchange=e=>{
 map.on('zoomstart movestart',()=>{if(windEnabled){cancelAnimationFrame(windRaf);clearWindCanvas();for(const c of [arrCv,windCv])c.style.opacity=0;}});
 map.on('moveend resize',()=>{if(windEnabled&&wf)placeWind();});
 
-// Raios / atividade elétrica NOAA GOES-19 GLM — flashes georreferenciados.
-// O navegador consome JSON da Supabase Edge Function do projeto.
-// A Edge Function lê GLM-L2-LCFA oficial (NetCDF/HDF5) e devolve apenas flashes recentes.
-const lightningLayer=L.layerGroup();
+// Raios / atividade elétrica NOAA GOES-19 GLM — América do Sul inteira.
+// Mantemos todos os flashes recentes em memória para o Situation Engine, mas a renderização
+// muda com o zoom: continental = núcleos agregados; local = flashes individuais.
 let lightningEnabled=false,glmTimer=null,glmRequest=0,glmFeatures=[];
 const GLM_API=(window.MONI_CONFIG&&window.MONI_CONFIG.glmApiUrl)||((window.MONI_CONFIG?.supabaseUrl||'')+'/functions/v1/glm');
+const GLM_BOUNDS={south:-54,west:-90,north:15,east:-30};
 function setGlmStatus(t,mode=''){const st=document.querySelector('#glmStatus');if(!st)return;st.textContent=t;st.dataset.mode=mode;}
-function glmDot(f){
-  const age=Math.max(0,(Date.now()-new Date(f.time).getTime())/1000);
-  const opacity=age<300?.95:age<600?.65:.35;
-  const radius=age<300?4.2:age<600?3.4:2.7;
-  return L.circleMarker([f.lat,f.lon],{radius,weight:1,color:'#fff2a8',fillColor:'#ffd84a',fillOpacity:opacity,opacity:opacity,interactive:false});
-}
+
+// Canvas único: muito mais leve que milhares de circleMarkers no celular.
+const GlmCanvasLayer=L.Layer.extend({
+  onAdd(map){
+    this._map=map; this._canvas=L.DomUtil.create('canvas','glm-canvas');
+    this._canvas.style.position='absolute'; this._canvas.style.pointerEvents='none';
+    const pane=map.getPane('overlayPane'); pane.appendChild(this._canvas);
+    map.on('move zoom resize',this._reset,this); this._reset();
+  },
+  onRemove(map){map.off('move zoom resize',this._reset,this);this._canvas?.remove();this._canvas=null;},
+  _reset(){
+    if(!this._map||!this._canvas)return;
+    const size=this._map.getSize(),dpr=Math.min(window.devicePixelRatio||1,2);
+    this._canvas.width=Math.max(1,Math.round(size.x*dpr));this._canvas.height=Math.max(1,Math.round(size.y*dpr));
+    this._canvas.style.width=size.x+'px';this._canvas.style.height=size.y+'px';
+    L.DomUtil.setPosition(this._canvas,this._map.containerPointToLayerPoint([0,0]));
+    const ctx=this._canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);this._draw(ctx,size);
+  },
+  redraw(){this._reset();},
+  _draw(ctx,size){
+    ctx.clearRect(0,0,size.x,size.y); if(!lightningEnabled||!glmFeatures.length)return;
+    const z=this._map.getZoom(),now=Date.now(),bounds=this._map.getBounds().pad(.15);
+    const visible=glmFeatures.filter(f=>bounds.contains([f.lat,f.lon])&&f.age<=900);
+    if(z>=8){
+      // Zoom local: flashes individuais. A idade controla tamanho/opacidade.
+      for(const f of visible){
+        const p=this._map.latLngToContainerPoint([f.lat,f.lon]);
+        const age=Math.max(0,(now-Date.parse(f.time))/1000),a=age<300?.95:age<600?.62:.32,r=age<300?3.0:age<600?2.4:1.8;
+        ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=`rgba(255,216,74,${a})`;ctx.fill();
+      }
+      return;
+    }
+    // Zoom regional/continental: agrega espacialmente sem perder a visão da América do Sul.
+    const cell=z<=3?2.0:z<=4?1.25:z<=5?.7:z<=6?.35:.18;
+    const bins=new Map();
+    for(const f of visible){
+      const iy=Math.floor((f.lat+90)/cell),ix=Math.floor((f.lon+180)/cell),k=iy+':'+ix;
+      let b=bins.get(k);if(!b)bins.set(k,b={lat:0,lon:0,n:0,recent:0});
+      b.lat+=f.lat;b.lon+=f.lon;b.n++;if(f.age<300)b.recent++;
+    }
+    for(const b of bins.values()){
+      const lat=b.lat/b.n,lon=b.lon/b.n,p=this._map.latLngToContainerPoint([lat,lon]);
+      const r=Math.min(z<=4?16:13,3+Math.sqrt(b.n)*1.15),fresh=b.recent/Math.max(1,b.n);
+      ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=`rgba(255,200,45,${.28+.5*fresh})`;ctx.fill();
+      if(b.n>=4){ctx.font=`600 ${Math.max(9,Math.min(12,r*.8))}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='rgba(255,248,210,.92)';ctx.fillText(String(b.n),p.x,p.y);}
+    }
+  }
+});
+const lightningLayer=new GlmCanvasLayer();
+
 async function refreshGlm(){
   if(!lightningEnabled)return;
-  const req=++glmRequest; setGlmStatus('ATUALIZANDO…','loading');
+  const req=++glmRequest;setGlmStatus('ATUALIZANDO…','loading');
   try{
-    const b=map.getBounds();
-    const q=new URLSearchParams({south:String(Math.max(-54,b.getSouth()-2)),west:String(b.getWest()-2),north:String(Math.min(54,b.getNorth()+2)),east:String(b.getEast()+2),minutes:'15'});
-    const r=await fetch(GLM_API+'?'+q,{cache:'no-store'}); if(!r.ok)throw new Error('HTTP '+r.status);
-    const d=await r.json(); if(req!==glmRequest||!lightningEnabled)return;
-    lightningLayer.clearLayers();
+    // Sempre pede América do Sul. O zoom altera só a forma de desenhar, não o que sabemos sobre o entorno.
+    const q=new URLSearchParams({south:String(GLM_BOUNDS.south),west:String(GLM_BOUNDS.west),north:String(GLM_BOUNDS.north),east:String(GLM_BOUNDS.east),minutes:'15'});
+    const r=await fetch(GLM_API+'?'+q,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();if(req!==glmRequest||!lightningEnabled)return;
     const now=Date.now();
-    glmFeatures=(d.flashes||[]).map(f=>({lat:+f.lat,lon:+f.lon,time:f.time,age:Math.max(0,(now-new Date(f.time).getTime())/1000)})).filter(f=>Number.isFinite(f.lat)&&Number.isFinite(f.lon)&&f.age<=900);
-    glmFeatures.forEach(f=>glmDot(f).addTo(lightningLayer));
-    const ageMin=d.latest?Math.max(0,Math.round((now-new Date(d.latest).getTime())/60000)):null;
+    glmFeatures=(d.flashes||[]).map(f=>({lat:+f.lat,lon:+f.lon,time:f.time,age:Math.max(0,(now-Date.parse(f.time))/1000)}))
+      .filter(f=>Number.isFinite(f.lat)&&Number.isFinite(f.lon)&&f.lat>=GLM_BOUNDS.south&&f.lat<=GLM_BOUNDS.north&&f.lon>=GLM_BOUNDS.west&&f.lon<=GLM_BOUNDS.east&&f.age<=900);
+    lightningLayer.redraw();
+    const ageMin=d.latest?Math.max(0,Math.round((now-Date.parse(d.latest))/60000)):null;
     if(d.source_ok===false)setGlmStatus('DADOS INDISPONÍVEIS','offline');
     else if(glmFeatures.length===0)setGlmStatus('SEM ATIVIDADE · LIVE','live');
-    else setGlmStatus(`${glmFeatures.length} FLASHES · ${ageMin??0} MIN`,'live');
+    else setGlmStatus(`${glmFeatures.length.toLocaleString('pt-BR')} FLASHES · ${ageMin??0} MIN`,'live');
     renderPoint();
   }catch(err){console.warn('GLM',err);if(req===glmRequest)setGlmStatus('DADOS INDISPONÍVEIS','offline');}
 }
 function setGlm(on){
   lightningEnabled=on;
-  if(on){lightningLayer.addTo(map);refreshGlm();clearInterval(glmTimer);glmTimer=setInterval(refreshGlm,60000);map.on('moveend',refreshGlm);}
-  else{map.removeLayer(lightningLayer);clearInterval(glmTimer);glmTimer=null;glmRequest++;glmFeatures=[];map.off('moveend',refreshGlm);setGlmStatus('OFF');renderPoint();}
+  if(on){lightningLayer.addTo(map);refreshGlm();clearInterval(glmTimer);glmTimer=setInterval(refreshGlm,60000);}
+  else{map.removeLayer(lightningLayer);clearInterval(glmTimer);glmTimer=null;glmRequest++;glmFeatures=[];setGlmStatus('OFF');renderPoint();}
 }
 document.querySelector('#lightning').onchange=e=>setGlm(e.target.checked);
 

@@ -163,3 +163,6 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 .leaflet-control-zoom{display:none!important}
 
 #glmStatus.warn{color:#ffd36a!important} #glmStatus.offline{color:#ff7070!important}
+
+/* GOES-19 GLM: canvas leve para milhares de flashes */
+.glm-canvas{z-index:360;mix-blend-mode:screen}
