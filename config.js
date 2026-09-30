@@ -15,3 +15,6 @@ window.MONI_CONFIG.maxcappiAnalyzeUrl = window.MONI_CONFIG.maxcappiAnalyzeUrl ||
 
 // Focos ativos INPE — proxy da Edge Function (sem segredos no frontend).
 window.MONI_CONFIG.fireApiUrl = window.MONI_CONFIG.fireApiUrl || (window.MONI_CONFIG.supabaseUrl + '/functions/v1/fires');
+
+// Rotas internas MONI — proxy Supabase para evitar bloqueios CORS do navegador.
+window.MONI_CONFIG.routeApiUrl = window.MONI_CONFIG.routeApiUrl || (window.MONI_CONFIG.supabaseUrl + '/functions/v1/route');

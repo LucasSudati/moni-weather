@@ -500,6 +500,7 @@ function setLocationStatus(t,ok=false){if(!locationStatus)return;locationStatus.
 function applyUserPosition(pos){
   const lat=pos.coords.latitude,lon=pos.coords.longitude,acc=pos.coords.accuracy||0;
   userPosition={lat,lon,accuracy:acc,ts:Date.now()};
+  try{localStorage.setItem('moni.lastLocation',JSON.stringify(userPosition));}catch(_e){}
   if(userMarker)map.removeLayer(userMarker);if(userAccuracy)map.removeLayer(userAccuracy);
   userAccuracy=L.circle([lat,lon],{radius:acc,color:'#4ab8ff',weight:1,fillColor:'#4ab8ff',fillOpacity:.06,interactive:false}).addTo(map);
   userMarker=L.marker([lat,lon],{zIndexOffset:1000,icon:L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class=\"user-location\"></div>'})}).bindTooltip('Você está aqui').addTo(map);
@@ -509,10 +510,23 @@ function applyUserPosition(pos){
 }
 function startAutomaticLocation(){
   if(!navigator.geolocation){setLocationStatus('LOCALIZAÇÃO NÃO SUPORTADA');return;}
+  // Reaproveita apenas neste aparelho a última posição conhecida enquanto busca uma posição nova.
+  try{
+    const cached=JSON.parse(localStorage.getItem('moni.lastLocation')||'null');
+    if(cached&&Number.isFinite(cached.lat)&&Number.isFinite(cached.lon)&&Date.now()-(cached.ts||0)<6*60*60e3){
+      userPosition=cached;
+      setLocationStatus(`◌ ÚLTIMA LOCALIZAÇÃO · ±${Math.round(cached.accuracy||0)} m`);
+    }
+  }catch(_e){}
   setLocationStatus('◎ LOCALIZAÇÃO AUTOMÁTICA · SOLICITANDO…');
+  // Primeiro aceita uma posição de rede/Wi‑Fi. Em PCs isso costuma ser mais confiável que exigir GPS.
+  navigator.geolocation.getCurrentPosition(applyUserPosition,err=>{
+    if(!userPosition)setLocationStatus(err.code===1?'LOCALIZAÇÃO DESATIVADA PELO USUÁRIO':'LOCALIZAÇÃO TEMPORARIAMENTE INDISPONÍVEL');
+  },{enableHighAccuracy:false,timeout:12000,maximumAge:300000});
+  // Depois mantém acompanhamento e tenta melhorar a precisão quando o dispositivo permitir.
   userWatchId=navigator.geolocation.watchPosition(applyUserPosition,err=>{
-    setLocationStatus(err.code===1?'LOCALIZAÇÃO DESATIVADA PELO USUÁRIO':'LOCALIZAÇÃO TEMPORARIAMENTE INDISPONÍVEL');
-  },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+    if(!userPosition)setLocationStatus(err.code===1?'LOCALIZAÇÃO DESATIVADA PELO USUÁRIO':'LOCALIZAÇÃO TEMPORARIAMENTE INDISPONÍVEL');
+  },{enableHighAccuracy:true,timeout:30000,maximumAge:120000});
 }
 startAutomaticLocation();
 
@@ -796,15 +810,18 @@ async function routeToReport(r){
   if(!r)return;if(!userPosition){toast('Aguardando sua localização para calcular a rota.');return;}
   routeReport=r;routeNav.hidden=false;document.body.classList.add('route-open');routeSummary.textContent='Calculando…';routeInstruction.textContent='Calculando rota…';routeProgress.textContent='Sua localização → destino';
   try{
-    const u=`https://router.project-osrm.org/route/v1/driving/${userPosition.lon},${userPosition.lat};${r.lon},${r.lat}?overview=full&geometries=geojson&steps=true`;
-    const res=await fetch(u);const data=await res.json();if(!res.ok||data.code!=='Ok'||!data.routes?.[0])throw new Error(data.code||'Sem rota');
+    const routeApi=window.MONI_CONFIG?.routeApiUrl || (window.MONI_CONFIG?.supabaseUrl ? window.MONI_CONFIG.supabaseUrl+'/functions/v1/route' : '');
+    if(!routeApi)throw new Error('ROUTE_API_NOT_CONFIGURED');
+    const u=`${routeApi}?from=${encodeURIComponent(userPosition.lat+','+userPosition.lon)}&to=${encodeURIComponent(r.lat+','+r.lon)}`;
+    const res=await fetch(u,{headers:{'Accept':'application/json'}});
+    const data=await res.json().catch(()=>({}));if(!res.ok||data.code!=='Ok'||!data.routes?.[0])throw new Error(data.message||data.code||'Sem rota');
     const rr=data.routes[0];routeGeo=rr.geometry;routeSummary.textContent=`${routeKm(rr.distance)} · ~${routeTime(rr.duration)}`;routeInstruction.textContent=routeManeuver(rr.legs?.[0]?.steps?.[0]);routeProgress.textContent=`Destino: ${rType(r.k)?.t||'relato da comunidade'}`;
     initRouteMap(rr);
-  }catch(e){console.error('Rota:',e);routeInstruction.textContent='Não foi possível calcular a rota';routeProgress.textContent='Verifique sua conexão e tente novamente.';}
+  }catch(e){console.error('Rota:',e);routeInstruction.textContent='Não foi possível calcular a rota';routeProgress.textContent=e?.message==='NoRoute'?'Não foi encontrada uma rota rodoviária entre os pontos.':'Serviço de rotas indisponível. Tente novamente em instantes.';}
 }
 function initRouteMap(rr){
   if(routeMap){routeMap.remove();routeMap=null;}
-  routeMap=new maplibregl.Map({container:'route3dMap',style:'https://tiles.openfreemap.org/styles/bright',center:[userPosition.lon,userPosition.lat],zoom:15,pitch:62,bearing:0,attributionControl:true});
+  routeMap=new maplibregl.Map({container:'route3dMap',style:'https://tiles.openfreemap.org/styles/liberty',center:[userPosition.lon,userPosition.lat],zoom:15,pitch:62,bearing:0,attributionControl:true});
   routeMap.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');
   routeMap.on('load',()=>{
     routeMap.addSource('moni-route',{type:'geojson',data:{type:'Feature',properties:{},geometry:routeGeo}});
