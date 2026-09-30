@@ -147,8 +147,13 @@
     var back=sheet ? sheet.querySelector('.rs-back') : null;
     var warn=document.getElementById('rsWarn');
 
+    var reportIconsBuilt=false;
     function fill(){
-      if(!grid || grid.children.length) return;
+      if(!grid || reportIconsBuilt) return;
+      // Remove the legacy emoji markup shipped in the HTML and rebuild the menu
+      // from the same icon files used by map markers and notifications.
+      grid.replaceChildren();
+      reportIconsBuilt=true;
       TYPES.forEach(function(t){
         var b=document.createElement('button');
         b.type='button'; b.dataset.k=t[0]; b.style.setProperty('--c',t[3]);
