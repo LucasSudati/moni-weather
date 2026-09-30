@@ -542,10 +542,41 @@ async function enableNotifications(){
   if(permission==='granted'){localStorage.setItem('moni.notifications','1');if(b){b.textContent='🔔 ALERTAS DO DISPOSITIVO ATIVOS';b.classList.add('active');}await registerMoniSW();toast('Alertas do dispositivo ativados.');}
   else{localStorage.setItem('moni.notifications','0');if(b)b.textContent='🔕 ALERTAS NÃO AUTORIZADOS';}
 }
-async function deviceNotify(title,body,tag='moni'){
+function notificationIcon(title='',body='',tag=''){
+  const s=`${title} ${body} ${tag}`.toLowerCase();
+
+  // Meteorologia — Meteocons Fill animados.
+  if(/granizo|hail/.test(s)) return meteoIcon('hail');
+  if(/raio|relâmp|lightning|descarga elétrica/.test(s)) return meteoIcon('lightning-bolt');
+  if(/tempestade|storm|célula|celula/.test(s)) return meteoIcon('thunderstorms-day-rain');
+  if(/chuva|precipita|rain|alagamento|enchente|inunda/.test(s)) return meteoIcon('extreme-rain');
+  if(/vento|rajada|wind/.test(s)) return meteoIcon('wind');
+  if(/neblina|nevoeiro|fog/.test(s)) return meteoIcon('fog-day');
+  if(/fogo|incêndio|incendio|queimada|smoke/.test(s)) return meteoIcon('smoke');
+
+  // Comunidade. Mantemos os pictogramas como SVG embutido para que
+  // a notificação não dependa de uma imagem externa.
+  const glyph = /abrigo/.test(s) ? '⌂'
+    : /distribui|mantimento|alimento|doaç|doacao|arrecada/.test(s) ? '▣'
+    : /água|agua/.test(s) ? '●'
+    : /energia|luz|poste|fio/.test(s) ? '⚡'
+    : /árvore|arvore/.test(s) ? '▲'
+    : /bloque|obstáculo|obstaculo|perigo/.test(s) ? '!'
+    : /report|relato|comunidade/.test(s) ? '!'
+    : null;
+
+  if(glyph){
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="22" fill="%23081721"/><circle cx="48" cy="48" r="35" fill="%23132635" stroke="%235bd4ff" stroke-width="4"/><text x="48" y="61" text-anchor="middle" font-family="Arial,sans-serif" font-size="42" font-weight="700" fill="white">${glyph}</text></svg>`;
+    return `data:image/svg+xml,${svg}`;
+  }
+
+  return meteoIcon('partly-cloudy-day');
+}
+async function deviceNotify(title,body,tag='moni',icon=null){
   if(localStorage.getItem('moni.notifications')!=='1'||Notification.permission!=='granted')return;
   const reg=swRegistration||await registerMoniSW();
-  const opts={body,tag,renotify:false,icon:meteoIcon('thunderstorms-day-rain'),badge:meteoIcon('thunderstorms-day-rain'),data:{url:location.href}};
+  const selectedIcon=icon||notificationIcon(title,body,tag);
+  const opts={body,tag,renotify:false,icon:selectedIcon,badge:selectedIcon,data:{url:location.href}};
   if(reg)reg.showNotification(title,opts);else new Notification(title,opts);
 }
 const notifyBtn=document.querySelector('#notifyBtn');if(notifyBtn){notifyBtn.onclick=enableNotifications;if(Notification.permission==='granted'&&localStorage.getItem('moni.notifications')==='1'){notifyBtn.textContent='🔔 ALERTAS DO DISPOSITIVO ATIVOS';notifyBtn.classList.add('active');}}

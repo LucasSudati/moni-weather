@@ -1,7 +1,20 @@
-const CACHE='moni-v5.9-maplibre-esm';
+const CACHE='moni-v5.10-notification-icons';
 const SHELL=['./','./index.html','./style.css','./app.js','./config.js','./manifest.webmanifest'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).catch(()=>{})));
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});
-self.addEventListener('push',e=>{let d={};try{d=e.data?e.data.json():{}}catch{d={body:e.data?.text()||''}}e.waitUntil(self.registration.showNotification(d.title||'MONI Weather',{body:d.body||'Novo alerta disponível.',tag:d.tag||'moni-push',icon:d.icon||'https://cdn.jsdelivr.net/gh/basmilius/weather-icons@2.0.0/production/fill/all/thunderstorms-day-rain.svg',data:{url:d.url||'./'}}));});
+function pushIcon(d){
+  if(d.icon)return d.icon;
+  const s=`${d.title||''} ${d.body||''} ${d.tag||''} ${d.category||''}`.toLowerCase();
+  const root='https://cdn.meteocons.com/latest/svg/fill/';
+  if(/granizo|hail/.test(s))return root+'hail.svg';
+  if(/raio|relâmp|lightning/.test(s))return root+'lightning-bolt.svg';
+  if(/tempestade|storm|célula|celula/.test(s))return root+'thunderstorms-day-rain.svg';
+  if(/chuva|precipita|rain|alagamento|enchente|inunda/.test(s))return root+'extreme-rain.svg';
+  if(/vento|rajada|wind/.test(s))return root+'wind.svg';
+  if(/neblina|nevoeiro|fog/.test(s))return root+'fog-day.svg';
+  if(/fogo|incêndio|incendio|queimada|smoke/.test(s))return root+'smoke.svg';
+  return root+'partly-cloudy-day.svg';
+}
+self.addEventListener('push',e=>{let d={};try{d=e.data?e.data.json():{}}catch{d={body:e.data?.text()||''}}const icon=pushIcon(d);e.waitUntil(self.registration.showNotification(d.title||'MONI Weather',{body:d.body||'Novo alerta disponível.',tag:d.tag||'moni-push',icon,badge:icon,data:{url:d.url||'./'}}));});
 self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.openWindow(e.notification.data?.url||'./'));});
