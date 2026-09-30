@@ -699,36 +699,48 @@ document.querySelector('#menuBtn').onclick=()=>document.querySelector('aside').c
 map.on('click',()=>document.querySelector('aside').classList.remove('open'));
 
 
-// ========================= queimadas =========================
-// Condição meteorológica favorável ao fogo (heurística simples; não indica foco ativo).
+// ========================= FOCOS TÉRMICOS =========================
+// Fonte: INPE · Programa Queimadas.
+// Um foco térmico é uma detecção orbital de anomalia térmica; não confirma,
+// isoladamente, um incêndio e não representa o perímetro ou a extensão do fogo.
+// Os nomes internos fire/fires foram mantidos para preservar a integração atual.
+
+// Condição meteorológica favorável ao fogo (heurística simples; não indica foco térmico nem incêndio confirmado).
 function fireWx(rh,gust,p,t){if(!isFinite(rh))return '--';let n=0;if(rh<30)n+=2;else if(rh<45)n++;if(gust>=35)n++;if(t>=30)n++;if(p>0.2)n=0;return n>=4?'MUITO ALTA':n>=3?'ALTA':n>=2?'MÉDIA':'BAIXA';}
 
-// Focos ativos INPE — feed quase em tempo real (10 min), servido pela Edge Function `fires`.
-// Importante: um foco é uma detecção térmica orbital; não representa o perímetro exato das chamas.
 map.createPane('firePane');map.getPane('firePane').style.zIndex=470;
-const fireRenderer=L.canvas({pane:'firePane',padding:.35});
 const fireLayer=L.layerGroup();
 let fireData=[], fireLoadedAt=0, fireLoading=false;
 const FIRE_REFRESH_MS=10*60*1000;
 const FIRE_MAX_AGE_H=6;
+const FIRE_THERMOMETER_ICON='./assets/meteocons/thermometer.svg'; // [MONI ICON] thermal-hotspot / principal
 const fireApi=window.MONI_CONFIG?.fireApiUrl || ((window.MONI_CONFIG?.supabaseUrl||'')+'/functions/v1/fires');
 const setFire=(t,live)=>{const el=document.querySelector('#fireStatus');if(!el)return;el.textContent=t;el.classList.toggle('live',!!live);};
 const escFire=s=>String(s??'--').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function fireAgeText(min){if(!Number.isFinite(min))return '--';if(min<60)return `${Math.max(0,Math.round(min))} min`;return `${(min/60).toFixed(1)} h`;}
 function fireStyle(ageMin){
-  if(ageMin<60)return {color:'#ff2d1a',fill:'#ff3b1f',r:6,op:.95,label:'MUITO RECENTE'};
-  if(ageMin<180)return {color:'#ff761a',fill:'#ff8a22',r:5.5,op:.88,label:'RECENTE'};
-  if(ageMin<360)return {color:'#ffb020',fill:'#ffbd32',r:5,op:.72,label:'ÚLTIMAS 6 H'};
-  return {color:'#8f98a3',fill:'#8f98a3',r:4,op:.45,label:'ANTIGO'};
+  // As cores representam somente a RECÊNCIA da detecção, não intensidade de incêndio.
+  if(ageMin<60)return {color:'#ff2d1a',label:'MUITO RECENTE'};
+  if(ageMin<180)return {color:'#ff761a',label:'RECENTE'};
+  if(ageMin<360)return {color:'#ffb020',label:'ÚLTIMAS 6 H'};
+  return {color:'#8f98a3',label:'ANTIGO'};
 }
 function firePopup(f){
-  const st=fireStyle(f.age_minutes);
-  return `<div class="moni-fire-popup"><b>🔥 FOCO TÉRMICO DETECTADO</b><br><small>${st.label}</small><hr>`+
+  const st=fireStyle(Number(f.age_minutes));
+  return `<div class="moni-fire-popup">`+
+    `<div class="fire-popup-title"><img src="${FIRE_THERMOMETER_ICON}" alt=""><b>FOCO TÉRMICO DETECTADO</b></div>`+ // [MONI ICON] thermal-hotspot / popup
+    `<small>${st.label}</small><hr>`+
     `Observado: <b>${escFire(f.observed_local||f.observed_utc)}</b><br>`+
-    `Idade: <b>${fireAgeText(f.age_minutes)}</b><br>`+
+    `Idade: <b>${fireAgeText(Number(f.age_minutes))}</b><br>`+
     `Satélite: <b>${escFire(f.satellite)}</b><br>`+
     `Coordenadas: ${Number(f.lat).toFixed(4)}, ${Number(f.lon).toFixed(4)}<br>`+
-    `<small>Fonte: INPE · Programa Queimadas<br>Detecção térmica por satélite. O ponto indica o centro da detecção, não o perímetro exato do fogo.</small></div>`;
+    `<small>Fonte: INPE · Programa Queimadas<br>Detecção de anomalia térmica por satélite. Não confirma, isoladamente, um incêndio e não representa o perímetro ou a extensão de uma queimada.</small></div>`;
+}
+function fireMarkerIcon(age,zoom){
+  const st=fireStyle(age);
+  const size=zoom<=4?28:34;
+  // [MONI ICON] thermal-hotspot / map — troque FIRE_THERMOMETER_ICON acima para mudar o SVG.
+  return L.divIcon({className:'fire-thermal-leaflet-icon',iconSize:[size,size],iconAnchor:[size/2,size/2],html:`<div class="fire-thermal-marker" style="--fire-age:${st.color};width:${size}px;height:${size}px"><img src="${FIRE_THERMOMETER_ICON}" alt=""></div>`});
 }
 function renderFires(){
   fireLayer.clearLayers();
@@ -739,13 +751,12 @@ function renderFires(){
     const lat=Number(f.lat),lon=Number(f.lon),age=Number(f.age_minutes);
     if(!Number.isFinite(lat)||!Number.isFinite(lon)||!Number.isFinite(age)||age>FIRE_MAX_AGE_H*60)continue;
     if(!b.contains([lat,lon]))continue;
-    const st=fireStyle(age);
-    const m=L.circleMarker([lat,lon],{renderer:fireRenderer,radius:zoom<=4?Math.max(3,st.r-1.5):st.r,color:st.color,weight:1.2,fillColor:st.fill,fillOpacity:st.op,opacity:Math.min(1,st.op+.1),pane:'firePane'});
+    const m=L.marker([lat,lon],{icon:fireMarkerIcon(age,zoom),pane:'firePane'});
     m.bindPopup(()=>firePopup(f),{maxWidth:300});
     m.addTo(fireLayer);shown++;
   }
   const badge=document.querySelector('#fireMapBadge span');
-  if(badge)badge.textContent=`FOGO ATIVO · ${shown} NO MAPA · INPE`;
+  if(badge)badge.textContent=`FOCOS TÉRMICOS · ${shown} NO MAPA · INPE`;
   setFire(`${shown} FOCOS`,true);
 }
 async function loadFires(force=false){
@@ -757,7 +768,7 @@ async function loadFires(force=false){
     if(!r.ok)throw new Error(`HTTP ${r.status}`);
     const j=await r.json();if(!j?.ok||!Array.isArray(j?.fires))throw new Error(j?.error||'Resposta inválida');
     fireData=j.fires;fireLoadedAt=Date.now();renderFires();
-  }catch(err){console.error('MONI fires:',err);setFire('ERRO');}
+  }catch(err){console.error('MONI thermal hotspots:',err);setFire('ERRO');}
   finally{fireLoading=false;}
 }
 document.querySelector('#fires').onchange=e=>{
@@ -780,7 +791,7 @@ function renderLegend(){
   if(lgOn('hail'))S.push(lgSec('GRANIZO','',`<div class="row"><span class="sw ring"></span>Potencial de granizo<small>moderado / alto</small></div>`));
   if(lgOn('wind'))S.push(lgSec('VENTO (10 m)','km/h',`<div class="bar"></div><div class="ticks"><span>0</span><span>15</span><span>30</span><span>50+</span></div>`,'Setas e partículas seguem para onde o vento sopra.'));
   if(lgOn('rain'))S.push(lgSec('CHUVA (IMERG)','',lgRow('#7fb2ff','Precipitação observada'),'NASA IMERG, com atraso de algumas horas. As cores seguem a escala do produto.'));
-  if(lgOn('fires'))S.push(lgSec('QUEIMADAS','fogo ativo',lgRow('#ff3b1f','< 1 h','muito recente')+lgRow('#ff8a22','1–3 h','recente')+lgRow('#ffbd32','3–6 h','detecção anterior'),'Focos térmicos do INPE. O ponto é o centro da detecção orbital, não o perímetro exato das chamas.'));
+  if(lgOn('fires'))S.push(lgSec('FOCOS TÉRMICOS','INPE',lgRow('#ff3b1f','< 1 h','muito recente')+lgRow('#ff8a22','1–3 h','recente')+lgRow('#ffbd32','3–6 h','detecção anterior'),'Detecções de anomalia térmica por satélite. As cores indicam recência, não intensidade. Um foco não confirma, isoladamente, um incêndio.'));
   if(lgOn('lightning'))S.push(lgSec('RAIOS (GLM)','',lgRow('#ffe066','Descarga detectada','últimos 15 min'),'Mais opaco = mais recente.'));
   if(lgOn('reports'))S.push(lgSec('RELATOS','comunidade',lgRow('#43df86','Ajuda ou serviço disponível')+lgRow('#ffb14a','Necessidade ou serviço faltando')+lgRow('#ff4d4d','Perigo (árvore, poste ou fio)'),'Enviados por usuários, não verificados. Expiram sozinhos (12–48 h).'));
   if(lgOn('sat'))S.push(lgSec('SATÉLITE','',`<p style="margin:0">GOES-19 GeoColor: cor real de dia e infravermelho à noite.</p>`));
@@ -979,10 +990,10 @@ $('#reports').onchange=e=>e.target.checked?rLayer.addTo(map):map.removeLayer(rLa
 drawReports();pullReports();setInterval(()=>{drawReports();pullReports();},60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)pullReports();});
 
-// ============================================================
+
 // MONI MAXCAPPI Analyzer v5.4 — frontend V2 otimizado
 // Canvas compartilhado + viewport culling + detalhe adaptativo por zoom
-// ============================================================
+
 map.createPane('maxcappiPane');
 map.getPane('maxcappiPane').style.zIndex=430;
 const maxcappiRenderer=L.canvas({padding:.35,tolerance:6});

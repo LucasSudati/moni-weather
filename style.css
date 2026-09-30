@@ -397,3 +397,12 @@ header b,.status,.status span{white-space:nowrap}
     min-width:0;
   }
 }
+
+/* Focos térmicos — ícone de termômetro (INPE) */
+.fire-layer-label{display:flex!important;align-items:center;gap:5px}
+.fire-layer-label>img{width:22px;height:22px;object-fit:contain;flex:0 0 22px}
+.fire-thermal-leaflet-icon{background:transparent!important;border:0!important}
+.fire-thermal-marker{box-sizing:border-box;border:2px solid var(--fire-age);border-radius:50%;background:rgba(10,15,21,.90);box-shadow:0 0 0 2px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center}
+.fire-thermal-marker img{width:82%;height:82%;object-fit:contain;display:block}
+.fire-popup-title{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.fire-popup-title img{width:25px;height:25px;object-fit:contain;flex:0 0 25px}
