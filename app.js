@@ -736,12 +736,6 @@ function firePopup(f){
     `Coordenadas: ${Number(f.lat).toFixed(4)}, ${Number(f.lon).toFixed(4)}<br>`+
     `<small>Fonte: INPE · Programa Queimadas<br>Detecção de anomalia térmica por satélite. Não confirma, isoladamente, um incêndio e não representa o perímetro ou a extensão de uma queimada.</small></div>`;
 }
-function fireMarkerIcon(age,zoom){
-  const st=fireStyle(age);
-  const size=zoom<=4?28:34;
-  // [MONI ICON] thermal-hotspot / map — troque FIRE_THERMOMETER_ICON acima para mudar o SVG.
-  return L.divIcon({className:'fire-thermal-leaflet-icon',iconSize:[size,size],iconAnchor:[size/2,size/2],html:`<div class="fire-thermal-marker" style="--fire-age:${st.color};width:${size}px;height:${size}px"><img src="${FIRE_THERMOMETER_ICON}" alt=""></div>`});
-}
 function renderFires(){
   fireLayer.clearLayers();
   if(!document.querySelector('#fires')?.checked)return;
@@ -751,7 +745,17 @@ function renderFires(){
     const lat=Number(f.lat),lon=Number(f.lon),age=Number(f.age_minutes);
     if(!Number.isFinite(lat)||!Number.isFinite(lon)||!Number.isFinite(age)||age>FIRE_MAX_AGE_H*60)continue;
     if(!b.contains([lat,lon]))continue;
-    const m=L.marker([lat,lon],{icon:fireMarkerIcon(age,zoom),pane:'firePane'});
+    const st=fireStyle(age);
+    const radius=zoom<=4?4.5:6;
+    const m=L.circleMarker([lat,lon],{
+      radius,
+      color:st.color,
+      weight:1.2,
+      fillColor:st.color,
+      fillOpacity:.88,
+      opacity:.98,
+      pane:'firePane'
+    });
     m.bindPopup(()=>firePopup(f),{maxWidth:300});
     m.addTo(fireLayer);shown++;
   }
