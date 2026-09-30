@@ -831,9 +831,9 @@ async function pullReports(){
 }
 // UI
 $('#rsGrid').innerHTML=RT.map(t=>`<button data-k="${t.k}" style="--c:${t.c}"><span>${t.e}</span>${esc(t.t)}</button>`).join('');
-$('#rsGrid').onclick=e=>{const b=e.target.closest('button');if(!b)return;rSel=b.dataset.k;[...$('#rsGrid').children].forEach(x=>x.classList.toggle('sel',x===b));$('#rsWarn').textContent=rSel==='wire'?'Não se aproxime do fio. Avise a concessionária de energia e a Defesa Civil (199).':'';};
+$('#rsGrid').onclick=e=>{const b=e.target.closest('button');if(!b)return;rSel=b.dataset.k;window.MONI_REPORT_SELECTED=rSel;[...$('#rsGrid').children].forEach(x=>x.classList.toggle('sel',x===b));$('#rsWarn').textContent=rSel==='wire'?'Não se aproxime do fio. Avise a concessionária de energia e a Defesa Civil (199).':'';};
 function openReportSheet(){
-  rSel=null;
+  rSel=null;window.MONI_REPORT_SELECTED=null;
   [...$('#rsGrid').children].forEach(x=>x.classList.remove('sel'));
   $('#rsNote').value='';
   $('#rsWarn').textContent='';
@@ -846,16 +846,17 @@ const reportFab=$('#reportFab');
 // O botão principal é inicializado no HTML antes do app.js. Isso o mantém funcional
 // mesmo se alguma integração meteorológica lançar erro durante a inicialização.
 if(reportFab&&!window.MONI_OPEN_REPORT) reportFab.addEventListener('click',openReportSheet);
-const closeSheet=()=>{const sheet=$('#reportSheet');sheet.hidden=true;sheet.setAttribute('hidden','');document.body.classList.remove('report-open');};
+const closeSheet=()=>{if(window.MONI_CLOSE_REPORT)return window.MONI_CLOSE_REPORT();const sheet=$('#reportSheet');sheet.hidden=true;sheet.setAttribute('hidden','');document.body.classList.remove('report-open');};
 $('#rsClose').onclick=closeSheet;$('.rs-back').onclick=closeSheet;
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();});
 $('#rsGps').onclick=()=>{
+  rSel=rSel||window.MONI_REPORT_SELECTED||null;
   if(!rSel)return toast('Escolha o tipo de relato primeiro.');
   if(!navigator.geolocation)return toast('Localização não suportada neste navegador.');
   navigator.geolocation.getCurrentPosition(p=>submitReport(p.coords.latitude,p.coords.longitude),()=>toast('Não foi possível obter sua localização.'),{enableHighAccuracy:true,timeout:12000});
 };
 const endPick=()=>{window._pickMode=false;$('#pickHint').hidden=true;};
-$('#rsPick').onclick=()=>{if(!rSel)return toast('Escolha o tipo de relato primeiro.');closeSheet();window._pickMode=true;$('#pickHint').hidden=false;};
+$('#rsPick').onclick=()=>{rSel=rSel||window.MONI_REPORT_SELECTED||null;if(!rSel)return toast('Escolha o tipo de relato primeiro.');closeSheet();window._pickMode=true;$('#pickHint').hidden=false;};
 $('#pickCancel').onclick=()=>{endPick();$('#reportSheet').hidden=false;};
 map.on('click',e=>{if(!window._pickMode)return;endPick();submitReport(e.latlng.lat,e.latlng.lng);});
 $('#reports').onchange=e=>e.target.checked?rLayer.addTo(map):map.removeLayer(rLayer);

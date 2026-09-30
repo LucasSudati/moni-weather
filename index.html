@@ -91,20 +91,6 @@
   </footer>
 
   <button id="reportFab" type="button" aria-label="Reportar situação">＋ REPORTAR</button>
-  <script>
-  // Bootstrap mínimo do REPORTAR: funciona mesmo se uma camada do mapa falhar antes de app.js terminar.
-  (function(){
-    function openReport(){
-      var sheet=document.getElementById('reportSheet');
-      if(!sheet)return;
-      sheet.hidden=false;
-      sheet.removeAttribute('hidden');
-      document.body.classList.add('report-open');
-    }
-    window.MONI_OPEN_REPORT=openReport;
-    document.getElementById('reportFab').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openReport();});
-  })();
-  </script>
   <div id="reportSheet" hidden>
     <div class="rs-back"></div>
     <div class="rs-card" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
@@ -118,6 +104,72 @@
   </div>
   <div id="pickHint" hidden>Toque no mapa para posicionar o relato <button id="pickCancel">cancelar</button></div>
   <div id="toast" hidden></div>
+
+  <script>
+  // MONI V5.3 — UI de relatos independente do mapa.
+  // O painel abre, fecha e mostra as categorias mesmo se app.js ou alguma camada falhar.
+  (function(){
+    var TYPES = [
+      ['hail_now','🟣','Granizo agora','#d35cff'],
+      ['storm_now','⛈️','Tempestade forte agora','#ff4d4d'],
+      ['heavy_rain','🌧️','Chuva intensa agora','#4ab8ff'],
+      ['fire_now','🔥','Incêndio / queimada agora','#ff5a1f'],
+      ['shelter','🏠','Abrigo','#43df86'],
+      ['collect','📦','Arrecadação de mantimentos','#43df86'],
+      ['distrib','🍞','Distribuição de mantimentos','#43df86'],
+      ['tarp_have','⛺','Lonas disponíveis','#43df86'],
+      ['tarp_need','🏚️','Precisa de lona','#ffb14a'],
+      ['tree','🌳','Árvore caída','#ff4d4d'],
+      ['wire','⚡','Poste / fio caído','#ff4d4d'],
+      ['power_on','💡','Com energia','#43df86'],
+      ['power_off','🔌','Sem energia','#ffb14a'],
+      ['water_on','🚰','Com água','#43df86'],
+      ['water_off','🚱','Sem água','#ffb14a']
+    ];
+    var fab=document.getElementById('reportFab');
+    var sheet=document.getElementById('reportSheet');
+    var grid=document.getElementById('rsGrid');
+    var close=document.getElementById('rsClose');
+    var back=sheet ? sheet.querySelector('.rs-back') : null;
+    var warn=document.getElementById('rsWarn');
+
+    function fill(){
+      if(!grid || grid.children.length) return;
+      TYPES.forEach(function(t){
+        var b=document.createElement('button');
+        b.type='button'; b.dataset.k=t[0]; b.style.setProperty('--c',t[3]);
+        var sp=document.createElement('span'); sp.textContent=t[1];
+        b.appendChild(sp); b.appendChild(document.createTextNode(t[2]));
+        grid.appendChild(b);
+      });
+    }
+    function open(){
+      fill();
+      if(!sheet)return;
+      sheet.hidden=false; sheet.removeAttribute('hidden');
+      document.body.classList.add('report-open');
+    }
+    function shut(){
+      if(!sheet)return;
+      sheet.hidden=true; sheet.setAttribute('hidden','');
+      document.body.classList.remove('report-open');
+    }
+    fill();
+    window.MONI_OPEN_REPORT=open;
+    window.MONI_CLOSE_REPORT=shut;
+    if(fab) fab.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();open();});
+    if(close) close.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();shut();});
+    if(back) back.addEventListener('click',function(e){e.preventDefault();shut();});
+    if(grid) grid.addEventListener('click',function(e){
+      var b=e.target.closest('button[data-k]'); if(!b)return;
+      window.MONI_REPORT_SELECTED=b.dataset.k;
+      Array.prototype.forEach.call(grid.children,function(x){x.classList.toggle('sel',x===b);});
+      if(warn) warn.textContent=b.dataset.k==='wire'?'Não se aproxime do fio. Avise a concessionária de energia e a Defesa Civil (199).':'';
+    });
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!sheet.hidden)shut();});
+  })();
+  </script>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
