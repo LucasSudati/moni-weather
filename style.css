@@ -337,3 +337,15 @@ header b,.status,.status span{white-space:nowrap}
 
 /* ---------- 12. Divisores: o título de seção já traz a linha ---------- */
 .sep{display:none}
+
+/* Página legal / acesso à licença */
+.legal-link{color:#71808b;text-decoration:none;font-size:9px;letter-spacing:.09em;white-space:nowrap;border-left:1px solid #26313d;padding-left:12px}
+.legal-link:hover{color:#7cc8ff}
+@media(max-width:760px){.legal-link{font-size:9px;padding-left:8px}}
+
+.site-links{display:flex;align-items:center;gap:0;margin-left:auto}
+.site-links .legal-link:first-child{border-left:1px solid #26313d}
+.site-links .legal-link{border-left:0;padding-left:10px;margin-left:10px}
+@media(max-width:760px){
+  .site-links .legal-link{font-size:8px;padding-left:6px;margin-left:6px}
+}

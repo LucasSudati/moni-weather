@@ -1,0 +1,632 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d12">
+<title>Documentação — MONI Weather</title>
+<style>
+:root{--bg:#070a0f;--panel:#0e151d;--line:#26313d;--text:#d8e2ea;--mut:#8b9aa8;--acc:#4ab8ff}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.65 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:14px 22px;background:#0b1016e8;border-bottom:1px solid var(--line);backdrop-filter:blur(14px)}
+.brand{font-weight:800;letter-spacing:.16em;background:linear-gradient(90deg,#fff,var(--acc));-webkit-background-clip:text;background-clip:text;color:transparent}a{color:#72c9ff}header a{text-decoration:none;font-size:13px}
+main{width:min(1120px,calc(100% - 32px));margin:auto;padding:40px 0 80px}article{background:linear-gradient(180deg,#0e151dd8,#090e14d8);border:1px solid #ffffff14;border-radius:18px;padding:clamp(22px,5vw,58px);box-shadow:0 18px 60px #0005}
+h1{font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.035em}h2{margin-top:2.2em;padding-top:.5em;border-top:1px solid var(--line);font-size:25px}h3{margin-top:1.8em;color:#eef8fc}
+p,li{color:#bdcad3}strong{color:#f3f8fb}blockquote{margin:20px 0;padding:13px 16px;border-left:3px solid var(--acc);background:#4ab8ff12;border-radius:0 10px 10px 0}
+pre{overflow:auto;padding:16px;background:#060a0e;border:1px solid var(--line);border-radius:12px;color:#bfe7ff;font:13px/1.55 ui-monospace,Consolas,monospace}code{font-family:ui-monospace,Consolas,monospace;color:#bfe7ff}:not(pre)>code{padding:2px 6px;background:#101923;border:1px solid var(--line);border-radius:6px}
+table{width:100%;border-collapse:collapse;margin:18px 0;display:block;overflow:auto}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:#101923;color:#e9f4fa}td{color:#b7c5cf}li::marker{color:var(--acc)}input[type=checkbox]{accent-color:var(--acc)}
+.notice{padding:10px 14px;border:1px solid #ffd34d55;background:#ffd34d12;border-radius:10px;color:#ffe89a}
+@media(max-width:700px){header{padding:12px 14px}header a{display:none}main{width:calc(100% - 16px);padding:16px 0 40px}article{padding:20px;border-radius:14px}}
+</style></head><body><header><div class="brand">MONI WEATHER</div><a href="./">← VOLTAR AO MAPA</a></header>
+<main><article><div class="notice">Documentação técnica e visão geral. Projeto experimental; não substitui alertas oficiais.</div>
+<h1 id="moni-weather">MONI Weather</h1>
+<p><strong>Mapa colaborativo de alerta e apoio para tempestades e
+catástrofes.</strong></p>
+<p>O MONI Weather reúne, na mesma interface, o que está acontecendo
+<strong>no céu</strong> — satélite, infravermelho, radar, precipitação,
+raios, vento e células convectivas — e <strong>no chão</strong> —
+abrigos, doações, distribuição, lonas, energia, água e danos reportados
+pela comunidade.</p>
+<p><strong>Aplicação:</strong> <a
+href="https://lucassudati.github.io/moni-weather/">https://lucassudati.github.io/moni-weather/</a><br />
+<strong>Repositório:</strong> <a
+href="https://github.com/LucasSudati/moni-weather">https://github.com/LucasSudati/moni-weather</a></p>
+<blockquote>
+<p><strong>Projeto experimental e não oficial.</strong> Não substitui
+alertas, orientações ou canais da Defesa Civil, INMET, Bombeiros, SAMU
+ou outras autoridades.</p>
+</blockquote>
+<hr />
+<h2 id="por-que-existe">Por que existe</h2>
+<p>O projeto nasceu depois de uma tempestade intensa de granizo, em
+setembro de 2026, que causou danos graves em uma cidade e na região ao
+redor. Nos primeiros dias, informações essenciais ficaram espalhadas em
+grupos de mensagem, publicações e conversas: onde havia lona, onde
+receber doações, quais bairros estavam sem energia ou água e quais vias
+tinham problemas.</p>
+<p>A proposta do MONI Weather é colocar <strong>meteorologia, risco e
+logística comunitária no mesmo mapa</strong>, com linguagem acessível e
+indicação clara da origem e das limitações de cada informação.</p>
+<h2 id="princípios">Princípios</h2>
+<ul>
+<li><strong>Informação compreensível:</strong> dados técnicos são
+traduzidos para elementos visuais e mensagens curtas.</li>
+<li><strong>Observação não é previsão:</strong> satélite, radar e raios
+são separados de modelos e estimativas.</li>
+<li><strong>Estimativa não é alerta oficial:</strong> risco, granizo e
+nowcast do MONI são experimentais.</li>
+<li><strong>Relato comunitário não é dado verificado:</strong> relatos
+são identificados como colaborativos.</li>
+<li><strong>Informação temporária:</strong> relatos expiram para reduzir
+informação obsoleta.</li>
+<li><strong>Privacidade:</strong> o formulário orienta a não publicar
+nomes nem telefones.</li>
+<li><strong>Falha degradável:</strong> uma fonte indisponível não deve
+inutilizar o restante do mapa.</li>
+</ul>
+<hr />
+<h1 id="funcionalidades">Funcionalidades</h1>
+<h2 id="meteorologia">Meteorologia</h2>
+<p>A interface disponibiliza:</p>
+<ul>
+<li>Satélite GOES-19 / GOES-East ABI;</li>
+<li>nuvens de tempestade em infravermelho;</li>
+<li>radar REDEMET / MAXCAPPI com animação;</li>
+<li>precipitação NASA IMERG;</li>
+<li>raios GOES GLM;</li>
+<li>vento;</li>
+<li>células de tempestade;</li>
+<li>trajetória observada;</li>
+<li>nowcast experimental de 15, 30, 45 e 60 minutos;</li>
+<li>potencial de granizo;</li>
+<li>queimadas/focos térmicos;</li>
+<li>avisos do INMET;</li>
+<li>linha do tempo;</li>
+<li>análise meteorológica do ponto selecionado.</li>
+</ul>
+<h2 id="risco-simplificado">Risco simplificado</h2>
+<p>Ao tocar no mapa ou usar a localização, o app classifica o ponto como
+<strong>baixo, moderado, alto ou muito alto</strong>. É uma heurística
+experimental e não um alerta oficial.</p>
+<h2 id="relatos">Relatos</h2>
+<p>O botão <strong>Reportar</strong> permite informar:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Grupo</th>
+<th>Situações</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Tempo agora</td>
+<td>granizo, tempestade forte, chuva intensa, incêndio/queimada</td>
+</tr>
+<tr class="even">
+<td>Ajuda</td>
+<td>abrigo, arrecadação, distribuição, lonas, energia, água</td>
+</tr>
+<tr class="odd">
+<td>Necessidade</td>
+<td>precisa de lona, sem energia, sem água</td>
+</tr>
+<tr class="even">
+<td>Perigo</td>
+<td>árvore caída, poste/fio caído</td>
+</tr>
+</tbody>
+</table>
+<p>O relato pode usar a localização do aparelho ou um ponto escolhido no
+mapa.</p>
+<hr />
+<h1 id="arquitetura">Arquitetura</h1>
+<p>O MONI foi desenhado para operar <strong>100% online</strong>, sem
+servidor próprio e sem computador permanentemente ligado.</p>
+<pre class="text"><code>GitHub Pages
+└─ HTML + CSS + JavaScript
+   ├─ Leaflet ───────────── mapa meteorológico
+   ├─ MapLibre GL JS ───── rotas 2D/3D
+   ├─ APIs públicas ────── GIBS / Open-Meteo / etc.
+   └─ Supabase
+      ├─ PostgreSQL / REST ─ relatos e estado
+      └─ Edge Functions
+         ├─ glm
+         ├─ radar
+         ├─ maxcappi-analyze
+         ├─ fires
+         └─ route</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th>Parte</th>
+<th>Tecnologia</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Front-end</td>
+<td>HTML, CSS e JavaScript puro</td>
+</tr>
+<tr class="even">
+<td>Mapa</td>
+<td>Leaflet</td>
+</tr>
+<tr class="odd">
+<td>Rotas 2D/3D</td>
+<td>MapLibre GL JS</td>
+</tr>
+<tr class="even">
+<td>Hospedagem</td>
+<td>GitHub Pages</td>
+</tr>
+<tr class="odd">
+<td>Banco</td>
+<td>Supabase/PostgreSQL</td>
+</tr>
+<tr class="even">
+<td>Processamento/proxy</td>
+<td>Supabase Edge Functions / Deno</td>
+</tr>
+<tr class="odd">
+<td>PWA</td>
+<td>Service Worker + Web App Manifest</td>
+</tr>
+<tr class="even">
+<td>Localização</td>
+<td>Geolocation API</td>
+</tr>
+</tbody>
+</table>
+<p>Não há etapa obrigatória de build.</p>
+<hr />
+<h1 id="como-os-dados-são-tratados">Como os dados são tratados</h1>
+<h2 id="satélite-goes">Satélite GOES</h2>
+<p>O GeoColor do GOES-East/GOES-19 é carregado como camada
+georreferenciada. O usuário controla a opacidade e a timeline pode
+selecionar observações anteriores. O sistema não cria frames
+futuros.</p>
+<h2 id="infravermelho">Infravermelho</h2>
+<p>A imagem IR ajuda a visualizar topos de nuvens e convecção. A análise
+de núcleos frios é experimental. O tratamento visual usa saturação
+reduzida para que vermelho/laranja permaneçam associados a risco na
+interface.</p>
+<h2 id="precipitação-imerg">Precipitação IMERG</h2>
+<p>O produto <code>IMERG_Precipitation_Rate</code> é consumido via NASA
+GIBS/WMS.</p>
+<pre class="text"><code>NASA GIBS → WMS → tile georreferenciado → pane Leaflet → mapa</code></pre>
+<p>É tratado como <strong>precipitação observada</strong> e pode ter
+atraso de algumas horas. Não substitui radar em tempo real.</p>
+<h2 id="radar-redemet--maxcappi">Radar REDEMET / MAXCAPPI</h2>
+<p>O radar passa pela Edge Function <code>radar</code>.</p>
+<pre class="text"><code>REDEMET
+  ↓
+Edge Function radar
+  ↓
+validação + normalização + metadados geográficos
+  ↓
+frames MAXCAPPI
+  ├─→ animação no mapa
+  └─→ maxcappi-analyze</code></pre>
+<p>A função mantém credenciais fora do navegador, normaliza horários,
+associa imagens aos radares/bounds e elimina respostas inadequadas ou
+duplicadas quando necessário.</p>
+<h2 id="raios-goes-glm">Raios GOES GLM</h2>
+<p>A Edge Function <code>glm</code> entrega ao navegador uma
+representação reduzida da atividade elétrica.</p>
+<pre class="text"><code>GOES GLM
+  ↓
+glm
+  ↓
+filtro temporal
+  ↓
+filtro espacial / bbox
+  ↓
+normalização
+  ↓
+eventos recentes
+  ↓
+mapa</code></pre>
+<p>O front-end trabalha com uma janela recente, limita o volume de
+pontos e pode usar idade/opacidade para destacar eventos novos. Uma
+detecção GLM representa atividade elétrica observada por satélite; não
+significa necessariamente impacto no solo exatamente no pixel
+mostrado.</p>
+<h2 id="vento">Vento</h2>
+<p>O vento é mostrado por direção e intensidade. Para a análise do
+ponto, velocidade e rajadas também entram na avaliação de risco.</p>
+<h2 id="queimadas">Queimadas</h2>
+<p>Focos térmicos podem vir de produtos VIIRS/GOES e da Edge Function
+<code>fires</code>, conforme a fonte configurada.</p>
+<p><strong>Foco térmico não é confirmação de incêndio.</strong> É uma
+detecção remota sujeita à resolução do sensor, horário, nuvens e outras
+limitações.</p>
+<p>O MONI mantém separada uma heurística de <strong>condição
+meteorológica favorável ao fogo</strong>, baseada em umidade,
+temperatura, rajadas e precipitação.</p>
+<h2 id="inmet">INMET</h2>
+<p>Avisos do INMET aparecem como informação oficial separada. A
+interface não mistura visualmente um aviso oficial com a classificação
+experimental do MONI.</p>
+<h2 id="open-meteo">Open-Meteo</h2>
+<p>Ao selecionar um ponto, o front-end consulta dados horários como:</p>
+<ul>
+<li>temperatura a 2 m;</li>
+<li>umidade;</li>
+<li>precipitação;</li>
+<li>cobertura de nuvens;</li>
+<li>vento a 10 m;</li>
+<li>rajadas;</li>
+<li>CAPE;</li>
+<li>Lifted Index;</li>
+<li>Convective Inhibition;</li>
+<li>altura do nível de congelamento.</li>
+</ul>
+<p>A timeline usa aproximadamente 12 h anteriores e 12 h futuras ao
+momento de referência.</p>
+<hr />
+<h1 id="tratamento-do-risco">Tratamento do risco</h1>
+<p>A escala de risco é uma <strong>heurística do projeto</strong>.</p>
+<p>Na implementação usada como base:</p>
+<pre class="text"><code>CAPE &gt;= 800 J/kg                  → pelo menos MODERADO
+CAPE &gt;= 1500 J/kg ou rajada &gt;=60 → ALTO
+CAPE &gt;= 2500 J/kg ou rajada &gt;=80 → MUITO ALTO
+LI &lt;= -6 e CAPE &gt;= 1000          → pode elevar 1 nível
+|CIN| &gt; 200                       → pode reduzir 1 nível</code></pre>
+<p>O potencial de granizo é calculado separadamente combinando
+instabilidade, precipitação e nível de congelamento.</p>
+<p>Esses limiares <strong>não são critérios oficiais do INMET ou da
+Defesa Civil</strong>.</p>
+<hr />
+<h1 id="maxcappi-analyzer">MAXCAPPI Analyzer</h1>
+<p><code>maxcappi-analyze</code> é a parte de processamento convectivo
+do MONI.</p>
+<h2 id="classificação-dos-pixels">Classificação dos pixels</h2>
+<p>O produto recebido é uma imagem PNG colorida. O analisador decodifica
+a imagem e classifica a paleta.</p>
+<p>O campo <code>estimated_dbz</code> é uma <strong>estimativa baseada
+na cor da imagem MAXCAPPI</strong>, não a refletividade bruta original
+da REDEMET.</p>
+<h2 id="células-e-núcleos">Células e núcleos</h2>
+<p>Configuração documentada:</p>
+<pre class="text"><code>célula:
+  estimated_dbz &gt;= 30 dBZ
+  mínimo: 3 pixels
+
+núcleo convectivo:
+  estimated_dbz &gt;= 50 dBZ
+  mínimo: 2 pixels
+
+merge multirradar:
+  distância: 20 km</code></pre>
+<p>Uma célula pode conter vários núcleos. Para cada estrutura são
+obtidos centro, bounding box, área aproximada, intensidade, pico e
+informações dos núcleos.</p>
+<h2 id="tracking">Tracking</h2>
+<p>O estado temporal é persistido na tabela:</p>
+<pre class="text"><code>moni_maxcappi_state</code></pre>
+<p>O estado lógico utilizado é <code>brasil</code>.</p>
+<p>Parâmetros documentados:</p>
+<pre class="text"><code>idade máxima do estado anterior: 90 min
+velocidade física máxima:        180 km/h
+tolerância base:                 8 km
+distância máxima de associação:  60 km
+histórico:                       até 8 pontos
+suavização:                      até 5 segmentos</code></pre>
+<p>O matching considera posição anterior e prevista, direção,
+velocidade, mudança de área, salto de dBZ e mudança de núcleos.
+Associações fisicamente incompatíveis recebem penalidade ou são
+rejeitadas.</p>
+<p>O sistema mantém indicadores como <code>confidence</code>,
+<code>motion_quality</code>, <code>forecast_quality</code>,
+<code>track_quality_score</code>, <code>forecast_status</code> e
+<code>forecast_reason</code>.</p>
+<h2 id="nowcast">Nowcast</h2>
+<p>Com movimento suficientemente confiável:</p>
+<pre class="text"><code>posição observada
+   ↓
+vetor suavizado
+   ↓
++15 min
++30 min
++45 min
++60 min</code></pre>
+<p>É uma <strong>extrapolação cinemática</strong>, não um modelo
+atmosférico. A qualidade cai quando células nascem, dissipam, dividem,
+fundem ou mudam rapidamente de direção/velocidade. O nowcast pode ser
+bloqueado quando o movimento não é confiável.</p>
+<hr />
+<h1 id="relatos-da-comunidade">Relatos da comunidade</h1>
+<p>Cada relato guarda informações equivalentes a:</p>
+<pre class="text"><code>tipo
+latitude / longitude
+horário
+nota opcional
+contadores/estado de confirmação</code></pre>
+<p>A implementação usa TTL por natureza do relato. A lógica documentada
+historicamente trabalha com:</p>
+<pre class="text"><code>ajuda disponível → até 48 h
+necessidade      → até 24 h
+perigo           → até 12 h
+serviço          → até 12 h</code></pre>
+<p>Tipos meteorológicos imediatos podem usar validade menor na versão em
+produção.</p>
+<p>Usuários próximos podem marcar <strong>Ainda vale</strong> ou
+<strong>Não está mais</strong>. Relatos suficientemente contestados
+podem sair do mapa antes do TTL.</p>
+<p>O texto livre é curto e a interface pede explicitamente que não sejam
+publicados nomes nem telefones.</p>
+<hr />
+<h1 id="rotas-internas-2d3d">Rotas internas 2D/3D</h1>
+<p>A rota até um relato permanece dentro do MONI.</p>
+<pre class="text"><code>localização atual + destino
+          ↓
+       route
+          ↓
+ serviço compatível com OSRM
+          ↓
+geometria + distância + duração + passos
+          ↓
+     MapLibre GL JS
+          ↓
+       2D / 3D</code></pre>
+<p>A função valida origem/destino e converte a ordem das coordenadas
+para o formato esperado pelo upstream. O front-end desenha a rota,
+acompanha a localização, mostra resumo/instruções e alterna entre 2D e
+3D.</p>
+<p>A rota não garante conhecimento de bloqueios recentes causados por
+uma catástrofe.</p>
+<hr />
+<h1 id="pwa-e-notificações">PWA e notificações</h1>
+<p>O projeto inclui <code>manifest.webmanifest</code> e
+<code>sw.js</code>.</p>
+<p>O Service Worker cuida do cache dos recursos essenciais e da
+infraestrutura de notificações. O cache melhora a abertura em conexão
+instável, mas <strong>não torna dados meteorológicos recentes totalmente
+offline</strong>.</p>
+<p>O sistema visual de relatos possui três famílias:</p>
+<ul>
+<li><strong>marker:</strong> pin no mapa;</li>
+<li><strong>menu:</strong> símbolo compacto no formulário;</li>
+<li><strong>notification:</strong> bloco quadrado para alertas.</li>
+</ul>
+<p>Símbolo e cor mantêm a mesma semântica entre os três contextos.</p>
+<hr />
+<h1 id="supabase-edge-functions">Supabase Edge Functions</h1>
+<h2 id="glm"><code>glm</code></h2>
+<p><strong>Objetivo:</strong> obter, filtrar e normalizar atividade
+elétrica recente.</p>
+<p>Entrada típica: janela temporal, <code>bbox</code> e limite de
+eventos.</p>
+<p>Tratamento:</p>
+<ol type="1">
+<li>consulta a origem;</li>
+<li>valida resposta;</li>
+<li>filtra por tempo;</li>
+<li>filtra pela área;</li>
+<li>reduz payload;</li>
+<li>normaliza coordenadas/timestamps;</li>
+<li>usa cache curto quando apropriado;</li>
+<li>retorna JSON/GeoJSON para o mapa.</li>
+</ol>
+<h2 id="radar"><code>radar</code></h2>
+<p><strong>Objetivo:</strong> intermediar os produtos MAXCAPPI da
+REDEMET.</p>
+<p>Responsabilidades:</p>
+<ul>
+<li>manter credenciais em secrets;</li>
+<li>consultar produtos;</li>
+<li>selecionar frames;</li>
+<li>normalizar timestamps;</li>
+<li>associar radar, centro e bounds;</li>
+<li>eliminar itens inválidos/duplicados;</li>
+<li>fornecer dados ao mapa e ao <code>maxcappi-analyze</code>.</li>
+</ul>
+<h2 id="maxcappi-analyze"><code>maxcappi-analyze</code></h2>
+<p><strong>Objetivo:</strong> converter imagens MAXCAPPI em células
+rastreáveis.</p>
+<pre class="text"><code>radar
+→ PNG
+→ decode
+→ paleta
+→ estimated_dbz
+→ componentes conectados
+→ células
+→ núcleos
+→ merge multirradar
+→ matching temporal
+→ tracking_id
+→ movimento
+→ qualidade
+→ nowcast</code></pre>
+<p>Modos:</p>
+<pre class="text"><code>/functions/v1/maxcappi-analyze
+/functions/v1/maxcappi-analyze?lat=...&amp;lon=...&amp;radius=...</code></pre>
+<h2 id="fires"><code>fires</code></h2>
+<p><strong>Objetivo:</strong> intermediar e normalizar focos térmicos
+quando a fonte configurada exige proxy/processamento.</p>
+<p>Deve validar coordenadas/horários, filtrar por tempo e área e
+retornar apenas campos necessários. O contrato do front-end deve sempre
+apresentar o resultado como <strong>detecção térmica</strong>, não
+confirmação automática de incêndio.</p>
+<h2 id="route"><code>route</code></h2>
+<p><strong>Objetivo:</strong> desacoplar o navegador do provedor de
+roteamento.</p>
+<p>Entrada lógica:</p>
+<pre class="text"><code>from=latitude,longitude
+to=latitude,longitude</code></pre>
+<p>Valida coordenadas, converte para a ordem esperada pelo upstream e
+consulta o serviço compatível com OSRM.</p>
+<p>Saída normalizada:</p>
+<ul>
+<li>geometria;</li>
+<li>distância;</li>
+<li>duração;</li>
+<li>passos/instruções, quando disponíveis;</li>
+<li>erro legível quando não há rota.</li>
+</ul>
+<hr />
+<h1 id="banco-segurança-e-privacidade">Banco, segurança e
+privacidade</h1>
+<h2 id="relatos-1">Relatos</h2>
+<p>A tabela de relatos deve usar <strong>Row Level Security
+(RLS)</strong>. Acesso público deve ser limitado às operações realmente
+necessárias.</p>
+<h2 id="estado-maxcappi">Estado MAXCAPPI</h2>
+<p><code>moni_maxcappi_state</code> mantém estado compacto para
+continuidade do tracking. Não é um arquivo meteorológico histórico
+completo.</p>
+<h2 id="secrets">Secrets</h2>
+<p>Nunca coloque no front-end:</p>
+<ul>
+<li><code>service_role</code>;</li>
+<li>tokens privados;</li>
+<li>credenciais REDEMET;</li>
+<li>chaves privadas de provedores.</li>
+</ul>
+<p>Secrets ficam nas configurações das Edge Functions do Supabase.</p>
+<p><code>config.js</code> deve conter apenas configuração pública
+compatível com RLS.</p>
+<h2 id="cors">CORS</h2>
+<p>As Functions acessadas pelo GitHub Pages devem tratar
+<code>OPTIONS</code> e enviar cabeçalhos CORS adequados.</p>
+<h2 id="geolocalização">Geolocalização</h2>
+<p>A posição vem da Geolocation API e depende de permissão do navegador.
+É usada para centralizar o mapa, analisar o ponto, criar relatos,
+calcular rotas e determinar proximidade de alertas. O MONI não precisa
+publicar continuamente a localização do usuário.</p>
+<hr />
+<h1 id="estrutura">Estrutura</h1>
+<pre class="text"><code>moni-weather/
+├── index.html
+├── style.css
+├── app.js
+├── config.js
+├── sw.js
+├── manifest.webmanifest
+├── METEOCONS-LICENSE.txt
+├── assets/
+│   └── report-icons-v2/
+│       ├── marker/
+│       ├── menu/
+│       └── notification/
+└── supabase/
+    └── functions/
+        ├── glm/index.ts
+        ├── radar/index.ts
+        ├── maxcappi-analyze/index.ts
+        ├── fires/index.ts
+        └── route/index.ts</code></pre>
+<p>A pasta <code>supabase/functions</code> representa a organização
+recomendada para versionar o backend. Se os códigos ainda não estiverem
+públicos no repositório, esta seção documenta a arquitetura
+prevista.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Arquivo</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>index.html</code></td>
+<td>interface, painel, mapa, relatos e navegação</td>
+</tr>
+<tr class="even">
+<td><code>style.css</code></td>
+<td>visual, responsividade, acessibilidade e estados</td>
+</tr>
+<tr class="odd">
+<td><code>app.js</code></td>
+<td>camadas, dados, risco, comunidade e rotas</td>
+</tr>
+<tr class="even">
+<td><code>config.js</code></td>
+<td>configuração pública do Supabase</td>
+</tr>
+<tr class="odd">
+<td><code>sw.js</code></td>
+<td>cache/PWA/notificações</td>
+</tr>
+<tr class="even">
+<td><code>manifest.webmanifest</code></td>
+<td>instalação do app</td>
+</tr>
+<tr class="odd">
+<td><code>assets/</code></td>
+<td>ícones e recursos visuais</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="infraestrutura-e-hospedagem">Infraestrutura e hospedagem</h1>
+<p>O MONI Weather está atualmente em <strong>fase de desenvolvimento e testes</strong>. O front-end e o código do projeto são mantidos no GitHub, com publicação pela infraestrutura web do projeto, enquanto o Supabase fornece serviços de backend, banco de dados e Edge Functions.</p>
+<p>Essa arquitetura em nuvem permite desenvolver, testar e disponibilizar o MONI sem depender de um computador ou servidor local permanentemente ligado. As fontes meteorológicas continuam sendo consultadas diretamente ou por meio das Edge Functions quando é necessário processar dados, normalizar respostas ou proteger credenciais.</p>
+<p>Em uma etapa futura, está prevista a implantação do MONI Weather em <strong>domínio próprio</strong>, com uma infraestrutura mais adequada à operação contínua do serviço. A migração poderá ocorrer gradualmente, mantendo o Supabase ou incorporando outros componentes conforme as necessidades do projeto evoluírem.</p>
+<hr />
+<h1 id="limitações">Limitações</h1>
+<ul>
+<li>fontes externas podem ficar indisponíveis;</li>
+<li>cada sensor/produto possui resolução e latência próprias;</li>
+<li>IMERG pode ter atraso;</li>
+<li>foco térmico não confirma incêndio;</li>
+<li><code>estimated_dbz</code> não é refletividade bruta;</li>
+<li>nowcast é extrapolação de movimento;</li>
+<li>células podem nascer, dissipar, dividir e fundir;</li>
+<li>risco e granizo são heurísticas;</li>
+<li>relatos podem estar errados ou desatualizados;</li>
+<li>rotas podem não conhecer bloqueios recentes;</li>
+<li>notificações dependem do navegador;</li>
+<li>cache PWA não substitui conexão para dados novos.</li>
+</ul>
+<hr />
+<h1 id="emergência">Emergência</h1>
+<p>Em risco de vida:</p>
+<ul>
+<li><strong>193 — Bombeiros</strong></li>
+<li><strong>192 — SAMU</strong></li>
+<li><strong>199 — Defesa Civil</strong></li>
+</ul>
+<p>Siga sempre alertas e orientações oficiais.</p>
+<hr />
+<h1 id="roadmap">Roadmap</h1>
+<ul class="task-list">
+<li><label><input type="checkbox" />painel de coordenação de pontos de
+apoio;</label></li>
+<li><label><input type="checkbox" />filtros por tipo e
+bairro;</label></li>
+<li><label><input type="checkbox" />necessidades por ponto de
+coleta;</label></li>
+<li><label><input type="checkbox" />fila offline de relatos e
+sincronização posterior;</label></li>
+<li><label><input type="checkbox" />moderação e proteção contra
+spam/relatos falsos;</label></li>
+<li><label><input type="checkbox" />documentação SQL;</label></li>
+<li><label><input type="checkbox" />versionamento público das Edge
+Functions;</label></li>
+<li><label><input type="checkbox" />testes automatizados dos
+contratos;</label></li>
+<li><label><input type="checkbox" />métricas de validação do
+nowcast;</label></li>
+<li><label><input type="checkbox" />melhorias contínuas de
+acessibilidade.</label></li>
+</ul>
+<hr />
+<h1 id="créditos">Créditos</h1>
+<p>Dados e serviços: NASA GIBS, NOAA/GOES GLM, REDEMET/DECEA, INMET,
+INPE, Open-Meteo, Esri, OpenFreeMap e OSRM, conforme os termos de cada
+fonte.</p>
+<p>Bibliotecas: Leaflet e MapLibre GL JS.</p>
+<p>Ícones meteorológicos: <strong>Meteocons</strong>, de Bas Milius,
+licença MIT. Veja <code>METEOCONS-LICENSE.txt</code>.</p>
+<h2 id="licença">Licença</h2>
+<p>O código original do <strong>MONI Weather</strong> é disponibilizado sob a <strong>GNU Affero General Public License v3.0 (AGPL-3.0)</strong>.</p>
+<p>A licença do MONI aplica-se ao código original do projeto. Bibliotecas, ícones, mapas, dados meteorológicos, APIs e serviços de terceiros permanecem sujeitos às licenças e aos termos de seus respectivos autores e fornecedores.</p>
+<ul>
+<li><a href="license.html"><code>LICENSE</code></a> — GNU AGPL v3.0 do código original do MONI Weather;</li>
+<li><code>THIRD_PARTY_NOTICES.md</code> — avisos sobre recursos e serviços de terceiros;</li>
+<li><code>METEOCONS-LICENSE.txt</code> — licença dos Meteocons.</li>
+</ul>
+<p>Copyright © 2026 Lucas Sudati.</p>
+<h2 id="autor">Autor</h2>
+<p>Criado por <strong>Lucas Sudati</strong> — <a
+href="https://github.com/LucasSudati">https://github.com/LucasSudati</a></p>
+<hr />
+
+</article></main></body></html>
