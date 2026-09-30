@@ -504,6 +504,7 @@ function applyUserPosition(pos){
   userAccuracy=L.circle([lat,lon],{radius:acc,color:'#4ab8ff',weight:1,fillColor:'#4ab8ff',fillOpacity:.06,interactive:false}).addTo(map);
   userMarker=L.marker([lat,lon],{zIndexOffset:1000,icon:L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class=\"user-location\"></div>'})}).bindTooltip('Você está aqui').addTo(map);
   setLocationStatus(`● LOCALIZAÇÃO ATIVA · ±${Math.round(acc)} m`,true);
+  renderLegend();
   if(firstUserFix){firstUserFix=false;map.flyTo([lat,lon],Math.max(map.getZoom(),9));inspect(lat,lon);}
 }
 function startAutomaticLocation(){
@@ -737,11 +738,11 @@ function renderLegend(){
   if(lgOn('lightning'))S.push(lgSec('RAIOS (GLM)','',lgRow('#ffe066','Descarga detectada','últimos 15 min'),'Mais opaco = mais recente.'));
   if(lgOn('reports'))S.push(lgSec('RELATOS','comunidade',lgRow('#43df86','Ajuda ou serviço disponível')+lgRow('#ffb14a','Necessidade ou serviço faltando')+lgRow('#ff4d4d','Perigo (árvore, poste ou fio)'),'Enviados por usuários, não verificados. Expiram sozinhos (12–48 h).'));
   if(lgOn('sat'))S.push(lgSec('SATÉLITE','',`<p style="margin:0">GOES-19 GeoColor: cor real de dia e infravermelho à noite.</p>`));
-  if(locateBtn.classList.contains('active'))S.push(lgSec('LOCALIZAÇÃO','',lgRow('#4ab8ff','Você está aqui')));
+  if(userPosition)S.push(lgSec('LOCALIZAÇÃO','',lgRow('#4ab8ff','Você está aqui')));
   document.querySelector('#legendBox').innerHTML=S.join('');
 }
 document.querySelector('aside').addEventListener('change',renderLegend);
-new MutationObserver(renderLegend).observe(locateBtn,{attributes:true,attributeFilter:['class']});
+// A localização agora é automática; não existe mais o antigo botão locateBtn.
 renderLegend();
 
 
