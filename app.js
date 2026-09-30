@@ -825,10 +825,25 @@ async function routeToReport(r){
     routeSummary.textContent=`${routeKm(rr.distance)} · ~${routeTime(rr.duration)}`;
     routeInstruction.textContent=routeManeuver(rr.legs?.[0]?.steps?.[0]);
     routeProgress.textContent=`Destino: ${rType(r.k)?.t||'relato da comunidade'}`;
-    initRouteMap(rr);
+    await initRouteMap(rr);
   }catch(e){console.error('Rota:',e);routeInstruction.textContent='Não foi possível calcular a rota';routeProgress.textContent=e?.message==='NoRoute'?'Não foi encontrada uma rota rodoviária entre os pontos.':'Serviço de rotas indisponível. Tente novamente em instantes.';}
 }
-function initRouteMap(rr){
+async function initRouteMap(rr){
+  // MapLibre GL JS v6 is loaded as an ES module. Wait briefly for the module
+  // instead of treating a renderer-loading problem as a routing failure.
+  if(!window.maplibregl){
+    await new Promise((resolve,reject)=>{
+      const done=()=>{ cleanup(); resolve(); };
+      const fail=()=>{ cleanup(); reject(new Error('MapLibre não carregou')); };
+      const cleanup=()=>{ clearTimeout(timer); window.removeEventListener('moni:maplibre-ready',done); };
+      const timer=setTimeout(fail,8000);
+      window.addEventListener('moni:maplibre-ready',done,{once:true});
+      if(window.maplibregl) done();
+    });
+  }
+  const maplibregl=window.maplibregl;
+  if(!maplibregl?.Map) throw new Error('MapLibre indisponível');
+
   if(routeMap){routeMap.remove();routeMap=null;}
   routeMap=new maplibregl.Map({container:'route3dMap',style:'https://tiles.openfreemap.org/styles/liberty',center:[userPosition.lon,userPosition.lat],zoom:15,pitch:62,bearing:0,attributionControl:true});
   routeMap.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');

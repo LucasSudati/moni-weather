@@ -1,4 +1,4 @@
-const CACHE='moni-v5.8-route-parser';
+const CACHE='moni-v5.9-maplibre-esm';
 const SHELL=['./','./index.html','./style.css','./app.js','./config.js','./manifest.webmanifest'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).catch(()=>{})));
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
