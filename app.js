@@ -1108,3 +1108,12 @@ map.on('moveend zoomend',()=>{scheduleMaxcappiDraw();if(maxcappiData)drawMaxcapp
 // Tempestades e granizo iniciam ligados: carrega a análise mesmo se a camada de células estiver desligada.
 setTimeout(()=>refreshMaxcappi(true),250);
 
+
+
+// UI: alterna classe conforme o zoom para simplificar rótulos em visão ampla (somente visual).
+(function(){
+  try{
+    const c=map.getContainer(), upd=()=>c.classList.toggle('z-far',map.getZoom()<6);
+    map.on('zoomend',upd); upd();
+  }catch(e){console.warn('zoom-class:',e);}
+})();

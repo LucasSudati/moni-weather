@@ -6,10 +6,10 @@
   <title>MONI Weather</title>
   <meta name="theme-color" content="#080d12" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css" />
+  <link rel="stylesheet" href="ui-fixes.css" />
 </head>
 <body>
   <header>
@@ -21,44 +21,52 @@
       <div class="civil-risk" id="civilRiskCard">
         <div class="civil-risk-main">
           <img id="civilRiskIcon" class="risk-icon" src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@2.0.0/production/fill/all/partly-cloudy-day.svg" alt="Situação meteorológica">
-          <div><span>EM TESTES</span><b id="civilRisk">CONSULTE O MAPA</b><small id="civilRiskText">Clique na sua cidade para uma leitura simples.</small></div>
+          <div><span>Situação no seu local</span><b id="civilRisk">TOQUE NO MAPA</b><small id="civilRiskText">Toque na sua cidade ou ative a localização para ver o risco. Não substitui alertas oficiais.</small></div>
         </div>
         <div id="civilAlerts" class="civil-alerts" aria-live="polite"></div>
       </div>
-      <div id="alerts" class="small">Avisos INMET: consultando…</div><h3>CAMADAS</h3>
+      <div id="alerts" class="small">Avisos INMET: consultando…</div>
+
+      <h3>MEU LOCAL</h3>
+      <div id="locationStatus" class="location-auto">◎ Localização automática · aguardando permissão</div>
+      <button id="notifyBtn" class="locate-btn" type="button">🔔 Ativar alertas no dispositivo</button>
+
+      <h3>METEOROLOGIA</h3>
       <label><input type="checkbox" id="sat"> Satélite GOES-19</label>
       <label><input type="checkbox" id="ir"> Nuvens de tempestade <span class="tech">IR</span></label>
       <div id="satControls" class="sat-controls">
         <div class="sat-row"><span>GOES-E / GEOCOLOR</span><b id="satStatus">DESLIGADO</b></div>
         <div class="sat-row"><span>OPACIDADE</span><span id="opacityValue">72%</span></div>
-        <input id="satOpacity" type="range" min="10" max="100" value="72" />
+        <input id="satOpacity" type="range" min="10" max="100" value="72" aria-label="Opacidade do satélite" />
       </div>
-      <label><input type="checkbox" id="lightning"> Raios <span class="tag-live">NOAA · GLM/FED</span></label>
-      <label><input type="checkbox" id="radar"> Radar meteorológico <span class="tag-live">REDEMET</span></label>
+      <label><input type="checkbox" id="radar"> Radar <span class="tag-live">REDEMET</span></label>
       <div id="radarControls" class="sat-controls radar-controls">
         <div class="sat-row"><span>MAXCAPPI · BRASIL</span><b id="radarFrame">--</b></div>
         <div class="sat-row"><span>OPACIDADE</span><span id="radarOpacityValue">58%</span></div>
-        <input id="radarOpacity" type="range" min="15" max="90" value="58" />
-        <button id="radarPlay" class="radar-play" type="button">▶ ANIMAR RADAR</button>
+        <input id="radarOpacity" type="range" min="15" max="90" value="58" aria-label="Opacidade do radar" />
+        <button id="radarPlay" class="radar-play" type="button">▶ Animar radar</button>
       </div>
-      <label><input type="checkbox" id="maxcappiCells"> Células de tempestade <span class="tag-live">MONI · V5.4</span></label>
+      <label><input type="checkbox" id="rain" checked> Precipitação <span class="tag-live">IMERG</span></label>
+      <label><input type="checkbox" id="wind"> Vento</label>
+
+      <h3>TEMPESTADES E RISCOS</h3>
+      <label><input type="checkbox" id="lightning"> Raios <span class="tag-live">GLM</span></label>
+      <label><input type="checkbox" id="maxcappiCells"> Células de tempestade <span class="tag-live">BETA</span></label>
       <div id="maxcappiControls" class="sat-controls maxcappi-controls">
         <div class="sat-row"><span>TRACKING MAXCAPPI</span><b id="maxcappiStatus">OFF</b></div>
         <label class="sub-layer"><input type="checkbox" id="maxcappiTracks" checked> Trajetória observada</label>
         <label class="sub-layer"><input type="checkbox" id="maxcappiForecast" checked> Previsão 15–60 min</label>
         <label class="sub-layer"><input type="checkbox" id="maxcappiLabels" checked> Identificação</label>
-        <button id="maxcappiRefresh" class="radar-play" type="button">↻ ATUALIZAR ANÁLISE</button>
-        <div class="maxcappi-note">Renderização adaptativa · detalhes aparecem ao aproximar o mapa.<br>Experimental · previsão por extrapolação do deslocamento observado.</div>
+        <button id="maxcappiRefresh" class="radar-play" type="button">↻ Atualizar análise</button>
+        <div class="maxcappi-note">Detalhes aparecem ao aproximar o mapa. Experimental: a previsão extrapola o deslocamento observado.</div>
       </div>
-      <div id="locationStatus" class="location-auto">◎ LOCALIZAÇÃO AUTOMÁTICA · AGUARDANDO PERMISSÃO</div>
-      <button id="notifyBtn" class="locate-btn" type="button">🔔 ATIVAR ALERTAS NO DISPOSITIVO</button>
-      <label><input type="checkbox" id="rain" checked> Precipitação HD <span class="tag-live">RADAR + IMERG</span></label>
       <label><input type="checkbox" id="storms" checked> Tempestades <span class="layer-count" id="stormAutoCount">0</span></label>
       <label><input type="checkbox" id="hail" checked> Potencial de granizo <span class="layer-count" id="hailAutoCount">0</span></label>
-      <label><input type="checkbox" id="wind"> Vento</label>
+      <label><input type="checkbox" id="fires"> Queimadas <span class="tag-live">INPE</span></label>
+
+      <h3>MAPA E COMUNIDADE</h3>
       <label><input type="checkbox" id="borders" checked> Limites territoriais</label>
-      <label><input type="checkbox" id="fires"> Queimadas <span class="tag-live">INPE · 10 MIN</span></label>
-      <label><input type="checkbox" id="reports" checked> Relatos da comunidade <span class="tag-live">COMUNIDADE</span></label>
+      <label><input type="checkbox" id="reports" checked> Relatos da comunidade <span class="tag-live">AO VIVO</span></label>
       <div class="sep"></div>
       <h3>MONITOR SEVERO</h3>
       <div class="severe-box">
@@ -193,11 +201,11 @@
   </script>
 
   <script type="module">
-  import * as maplibregl from "https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.mjs";
+  import * as maplibregl from "./vendor/maplibre/maplibre-gl.mjs";
   window.maplibregl = maplibregl;
   window.dispatchEvent(new Event("moni:maplibre-ready"));
 </script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="vendor/leaflet/leaflet.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
