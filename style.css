@@ -349,3 +349,51 @@ header b,.status,.status span{white-space:nowrap}
 @media(max-width:760px){
   .site-links .legal-link{font-size:8px;padding-left:6px;margin-left:6px}
 }
+
+/* Rodapé do projeto — responsivo */
+@media (max-width: 760px){
+  .bottom-bar{
+    height:auto;
+    min-height:32px;
+    flex-wrap:wrap;
+    overflow:visible;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+
+  .bottom-left{
+    min-width:0;
+    flex:1 1 auto;
+  }
+
+  .site-links{
+    order:10;
+    width:100%;
+    flex:0 0 100%;
+    margin:0;
+    min-height:34px;
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0,1fr));
+    align-items:center;
+    border-top:1px solid #26313d;
+  }
+
+  .site-links .legal-link,
+  .site-links .legal-link:first-child{
+    margin:0;
+    padding:9px 4px;
+    border-left:1px solid #26313d;
+    text-align:center;
+    font-size:9px;
+    line-height:1;
+    white-space:nowrap;
+    overflow:visible;
+  }
+
+  .site-links .legal-link:first-child{
+    border-left:0;
+  }
+
+  #timeline{
+    min-width:0;
+  }
+}
