@@ -941,7 +941,13 @@ async function pullReports(){
   }catch(e){console.warn('Relatos:',e);setRep('SEM REDE');}
 }
 // UI
-$('#rsGrid').innerHTML=RT.map(t=>`<button data-k="${t.k}" style="--c:${t.c}"><span>${t.e}</span>${esc(t.t)}</button>`).join('');
+const reportMenuIcon=t=>{
+  if(t.k==='hail_now')return meteoIcon('hail');
+  if(t.k==='storm_now')return meteoIcon('thunderstorms-day-rain');
+  if(t.k==='heavy_rain')return meteoIcon('extreme-rain');
+  return reportIcon(t.k);
+};
+$('#rsGrid').innerHTML=RT.map(t=>`<button data-k="${t.k}" style="--c:${t.c}"><img class="rs-type-icon" src="${reportMenuIcon(t)}" alt="${esc(t.t)}"><span class="rs-type-label">${esc(t.t)}</span></button>`).join('');
 $('#rsGrid').onclick=e=>{const b=e.target.closest('button');if(!b)return;rSel=b.dataset.k;window.MONI_REPORT_SELECTED=rSel;[...$('#rsGrid').children].forEach(x=>x.classList.toggle('sel',x===b));$('#rsWarn').textContent=rSel==='wire'?'Não se aproxime do fio. Avise a concessionária de energia e a Defesa Civil (199).':'';};
 function openReportSheet(){
   rSel=null;window.MONI_REPORT_SELECTED=null;

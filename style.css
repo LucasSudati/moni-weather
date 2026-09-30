@@ -226,3 +226,8 @@ body.report-open{overflow:hidden}
 .rs-type-icon{width:34px;height:34px;display:block;margin:0 auto 5px;object-fit:contain}
 .rs-grid button{min-height:74px}
 .rs-grid button small{display:block;line-height:1.15}
+
+/* V5.13 — same report SVG in menu, map and notifications */
+#rsGrid button{display:flex;align-items:center;gap:10px;text-align:left}
+#rsGrid .rs-type-icon{width:34px;height:34px;min-width:34px;object-fit:contain;margin:0}
+#rsGrid .rs-type-label{display:block;line-height:1.15}
