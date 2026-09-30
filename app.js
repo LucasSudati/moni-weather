@@ -579,10 +579,11 @@ function riskAt(v){
   let n=0; if(cape>=1500)n++; if(cape>=2500)n++; if(li!=null&&li<=-6)n++; if(precip>=4)n++; if(fz!=null&&fz<4500&&cape>=1000)n++;
   return {l,hail:n>=4?'ALTO':n===3?'MODERADO':n>=1?'BAIXO':'MÍNIMO'};
 }
-const METEOCON='https://cdn.meteocons.com/latest/svg/fill/';
-const RISK_ICONS=['code-green','code-yellow','code-orange','code-red'];
+const METEOCON='https://cdn.jsdelivr.net/gh/basmilius/weather-icons@2.0.0/production/fill/all/';
+// Meteocons Fill animados. Somente nomes reais do catálogo são usados aqui.
+const RISK_ICONS=['partly-cloudy-day','partly-cloudy-day-rain','thunderstorms-day-rain','thunderstorms-day-rain'];
 function meteoIcon(name){return METEOCON+name+'.svg';}
-function iconFallback(img){img.onerror=null;img.src=meteoIcon('code-yellow');}
+function iconFallback(img){img.onerror=null;img.src=meteoIcon('not-available');}
 function civilAlert(icon,title,text,level='info'){
   return `<div class="civil-alert ${level}"><img src="${meteoIcon(icon)}" alt="" onerror="iconFallback(this)"><div><b>${title}</b><small>${text}</small></div></div>`;
 }
@@ -602,11 +603,11 @@ function setRisk(L0,details={}){
   const b=document.querySelector('#civilRisk'),txt=document.querySelector('#civilRiskText'),card=document.querySelector('#civilRiskCard'),icon=document.querySelector('#civilRiskIcon');
   const idx=Math.max(0,LV.indexOf(L0));b.textContent='RISCO '+L0.t;b.style.color=L0.c;txt.textContent=L0.m+' Não substitui alertas oficiais.';card.dataset.level=String(idx);icon.src=meteoIcon(RISK_ICONS[idx]);
   const a=[], ev=details.evidence||[];
-  const hailEv=ev.find(x=>x.kind==='hail'); if(hailEv)a.push(civilAlert('code-purple',hailEv.title,hailEv.text,'danger')); else if(details.hail==='ALTO'||details.hail==='MODERADO')a.push(civilAlert('code-purple','Possibilidade de granizo',details.hail==='ALTO'?'Condições atmosféricas mais favoráveis a granizo.':'Há sinais atmosféricos que merecem atenção para granizo.','danger'));
-  const stormEv=ev.find(x=>x.kind==='storm'); if(stormEv)a.push(civilAlert('lightning-bolts',stormEv.title,stormEv.text,'danger'));
-  const lightEv=ev.find(x=>x.kind==='lightning'); if(lightEv)a.push(civilAlert('lightning-bolts',lightEv.title,lightEv.text,'warning'));
-  const rainEv=ev.find(x=>x.kind==='rain'); if(rainEv)a.push(civilAlert('code-yellow',rainEv.title,rainEv.text,'warning'));
-  if(Number(details.gust)>=80)a.push(civilAlert('tornado-alert','Vento muito forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'danger')); else if(Number(details.gust)>=60)a.push(civilAlert('code-orange','Vento forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'warning'));
+  const hailEv=ev.find(x=>x.kind==='hail'); if(hailEv)a.push(civilAlert('hail',hailEv.title,hailEv.text,'danger')); else if(details.hail==='ALTO'||details.hail==='MODERADO')a.push(civilAlert('hail','Possibilidade de granizo',details.hail==='ALTO'?'Condições atmosféricas mais favoráveis a granizo.':'Há sinais atmosféricos que merecem atenção para granizo.','danger'));
+  const stormEv=ev.find(x=>x.kind==='storm'); if(stormEv)a.push(civilAlert('thunderstorms-day-rain',stormEv.title,stormEv.text,'danger'));
+  const lightEv=ev.find(x=>x.kind==='lightning'); if(lightEv)a.push(civilAlert('lightning-bolt',lightEv.title,lightEv.text,'warning'));
+  const rainEv=ev.find(x=>x.kind==='rain'); if(rainEv)a.push(civilAlert('rain',rainEv.title,rainEv.text,'warning'));
+  if(Number(details.gust)>=80)a.push(civilAlert('tornado','Vento muito forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'danger')); else if(Number(details.gust)>=60)a.push(civilAlert('wind','Vento forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'warning'));
   document.querySelector('#civilAlerts').innerHTML=a.slice(0,4).join('');
   const bar=document.querySelector('#riskBar');bar.innerHTML=`<img src="${icon.src}" alt=""><span>RISCO ${L0.t} — ${L0.m}</span>`;bar.style.borderColor=bar.style.color=L0.c;bar.classList.add('on');
 }
@@ -777,7 +778,7 @@ function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeou
 function drawReports(){
   rLayer.clearLayers();reports=reports.filter(rAlive);LSs('moni.reports',reports);
   for(const r of reports){const t=rType(r.k);
-    const reportHtml=r.k==='fire_now'?`<div class="rp rp-fire" style="border-color:${t.c}"><img src="${meteoIcon('fire-alert')}" onerror="this.onerror=null;this.src='${meteoIcon('code-red')}'" alt="Incêndio"></div>`:`<div class="rp" style="border-color:${t.c}">${t.e}</div>`;
+    const reportHtml=r.k==='fire_now'?`<div class="rp rp-fire" style="border-color:${t.c}"><img src="${meteoIcon('smoke')}" onerror="this.onerror=null;this.src='${meteoIcon('not-available')}'" alt="Incêndio"></div>`:`<div class="rp" style="border-color:${t.c}">${t.e}</div>`;
     const mk=L.marker([r.lat,r.lon],{icon:L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],html:reportHtml})});
     mk.bindPopup(`<b>${t.e} ${esc(t.t)}</b><br><small>${ago(r.ts)} · ✔ ${r.ok||0} · ✖ ${r.gone||0}</small>${r.note?`<p>${esc(r.note)}</p>`:''}${t.k==='wire'?'<p class="rp-warn">Perigo: mantenha distância e avise a concessionária e a Defesa Civil (199).</p>':''}<div class="rp-route"><button data-route="1">➜ TRAÇAR ROTA ATÉ AQUI</button></div><div class="rp-btns"><button data-v="ok">✔ Ainda vale</button><button data-v="gone">✖ Não está mais</button></div>`);
     mk.on('popupopen',e=>{const root=e.popup.getElement();root.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>vote(r.id,b.dataset.v));const rb=root.querySelector('[data-route]');if(rb)rb.onclick=()=>routeToReport(r);});

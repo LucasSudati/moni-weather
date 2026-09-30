@@ -1,3 +1,6 @@
-Meteocons by Bas Milius — MIT License.
+Meteocons / Weather Icons by Bas Milius
+License: MIT
 Project: https://github.com/basmilius/meteocons
-Icons are loaded from the official Meteocons CDN using animated SVG Fill style.
+Legacy animated Fill assets served from the official Bas Milius weather-icons repository via jsDelivr.
+
+The MONI Weather project uses animated SVG Fill icons.
