@@ -843,10 +843,9 @@ function openReportSheet(){
   document.body.classList.add('report-open');
 }
 const reportFab=$('#reportFab');
-if(reportFab){
-  reportFab.addEventListener('click',openReportSheet);
-  reportFab.addEventListener('touchend',e=>{e.preventDefault();openReportSheet();},{passive:false});
-}
+// O botão principal é inicializado no HTML antes do app.js. Isso o mantém funcional
+// mesmo se alguma integração meteorológica lançar erro durante a inicialização.
+if(reportFab&&!window.MONI_OPEN_REPORT) reportFab.addEventListener('click',openReportSheet);
 const closeSheet=()=>{const sheet=$('#reportSheet');sheet.hidden=true;sheet.setAttribute('hidden','');document.body.classList.remove('report-open');};
 $('#rsClose').onclick=closeSheet;$('.rs-back').onclick=closeSheet;
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();});

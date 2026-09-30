@@ -200,3 +200,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 #reportSheet:not([hidden]){display:flex!important;pointer-events:auto}
 body.report-open{overflow:hidden}
 .rs-card,.rs-back{pointer-events:auto}
+
+/* V5.2 — REPORTAR independente do mapa/Leaflet */
+#reportFab{z-index:2147483000!important;position:fixed!important;pointer-events:auto!important;isolation:isolate}
+#reportSheet{z-index:2147483001!important}

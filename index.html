@@ -91,6 +91,20 @@
   </footer>
 
   <button id="reportFab" type="button" aria-label="Reportar situação">＋ REPORTAR</button>
+  <script>
+  // Bootstrap mínimo do REPORTAR: funciona mesmo se uma camada do mapa falhar antes de app.js terminar.
+  (function(){
+    function openReport(){
+      var sheet=document.getElementById('reportSheet');
+      if(!sheet)return;
+      sheet.hidden=false;
+      sheet.removeAttribute('hidden');
+      document.body.classList.add('report-open');
+    }
+    window.MONI_OPEN_REPORT=openReport;
+    document.getElementById('reportFab').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openReport();});
+  })();
+  </script>
   <div id="reportSheet" hidden>
     <div class="rs-back"></div>
     <div class="rs-card" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
