@@ -1,0 +1,9 @@
+{
+  "name":"MONI Weather",
+  "short_name":"MONI",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#080d12",
+  "theme_color":"#080d12",
+  "description":"Monitoramento meteorológico e comunitário MONI"
+}

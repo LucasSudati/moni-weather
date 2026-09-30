@@ -493,20 +493,47 @@ const FIRE_LAYER_CONFIG={provider:'NASA GIBS',wms:GIBS_WMS,layer:'GOES-East_ABI_
 let irMoveTimer=null;map.on('moveend',()=>{if(windEnabled){clearTimeout(window._wm);window._wm=setTimeout(refreshWind,400);}if(infraredEnabled){clearTimeout(irMoveTimer);irMoveTimer=setTimeout(()=>buildInfrared(12-Number(timeline.value)),180);} });
 
 
-// localização do usuário via API de geolocalização do navegador (somente após clique).
-let userMarker=null,userAccuracy=null;
-const locateBtn=document.querySelector('#locateMe');
-locateBtn.onclick=()=>{
-  if(!navigator.geolocation){locateBtn.textContent='LOCALIZAÇÃO NÃO SUPORTADA';return;}
-  locateBtn.textContent='LOCALIZANDO…';
-  navigator.geolocation.getCurrentPosition(pos=>{
-    const lat=pos.coords.latitude,lon=pos.coords.longitude,acc=pos.coords.accuracy||0;
-    if(userMarker)map.removeLayer(userMarker);if(userAccuracy)map.removeLayer(userAccuracy);
-    userAccuracy=L.circle([lat,lon],{radius:acc,color:'#4ab8ff',weight:1,fillColor:'#4ab8ff',fillOpacity:.06}).addTo(map);
-    userMarker=L.marker([lat,lon],{zIndexOffset:1000,icon:L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class=\"user-location\"></div>'})}).bindTooltip('Você está aqui').addTo(map);
-    map.flyTo([lat,lon],Math.max(map.getZoom(),9));locateBtn.textContent='● MINHA LOCALIZAÇÃO';locateBtn.classList.add('active');inspect(lat,lon);
-  },err=>{locateBtn.textContent=err.code===1?'PERMISSÃO DE LOCALIZAÇÃO NEGADA':'NÃO FOI POSSÍVEL LOCALIZAR';},{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
-};
+// Localização automática. O navegador continua responsável por pedir a permissão ao usuário.
+let userMarker=null,userAccuracy=null,userPosition=null,userWatchId=null,firstUserFix=true;
+const locationStatus=document.querySelector('#locationStatus');
+function setLocationStatus(t,ok=false){if(!locationStatus)return;locationStatus.textContent=t;locationStatus.classList.toggle('active',ok);}
+function applyUserPosition(pos){
+  const lat=pos.coords.latitude,lon=pos.coords.longitude,acc=pos.coords.accuracy||0;
+  userPosition={lat,lon,accuracy:acc,ts:Date.now()};
+  if(userMarker)map.removeLayer(userMarker);if(userAccuracy)map.removeLayer(userAccuracy);
+  userAccuracy=L.circle([lat,lon],{radius:acc,color:'#4ab8ff',weight:1,fillColor:'#4ab8ff',fillOpacity:.06,interactive:false}).addTo(map);
+  userMarker=L.marker([lat,lon],{zIndexOffset:1000,icon:L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class=\"user-location\"></div>'})}).bindTooltip('Você está aqui').addTo(map);
+  setLocationStatus(`● LOCALIZAÇÃO ATIVA · ±${Math.round(acc)} m`,true);
+  if(firstUserFix){firstUserFix=false;map.flyTo([lat,lon],Math.max(map.getZoom(),9));inspect(lat,lon);}
+}
+function startAutomaticLocation(){
+  if(!navigator.geolocation){setLocationStatus('LOCALIZAÇÃO NÃO SUPORTADA');return;}
+  setLocationStatus('◎ LOCALIZAÇÃO AUTOMÁTICA · SOLICITANDO…');
+  userWatchId=navigator.geolocation.watchPosition(applyUserPosition,err=>{
+    setLocationStatus(err.code===1?'LOCALIZAÇÃO DESATIVADA PELO USUÁRIO':'LOCALIZAÇÃO TEMPORARIAMENTE INDISPONÍVEL');
+  },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+}
+startAutomaticLocation();
+
+// Notificações locais/PWA. Enquanto o MONI estiver aberto, mudanças importantes e novos relatos próximos
+// podem gerar notificações do sistema. O service worker também deixa a interface pronta para Web Push.
+let swRegistration=null,lastNotifiedRisk=Number(localStorage.getItem('moni.lastRisk')||-1);
+async function registerMoniSW(){if(!('serviceWorker' in navigator))return null;try{swRegistration=await navigator.serviceWorker.register('./sw.js');return swRegistration}catch(e){console.warn('SW',e);return null}}
+registerMoniSW();
+async function enableNotifications(){
+  if(!('Notification' in window)){toast('Notificações não são suportadas neste navegador.');return;}
+  const permission=await Notification.requestPermission();
+  const b=document.querySelector('#notifyBtn');
+  if(permission==='granted'){localStorage.setItem('moni.notifications','1');if(b){b.textContent='🔔 ALERTAS DO DISPOSITIVO ATIVOS';b.classList.add('active');}await registerMoniSW();toast('Alertas do dispositivo ativados.');}
+  else{localStorage.setItem('moni.notifications','0');if(b)b.textContent='🔕 ALERTAS NÃO AUTORIZADOS';}
+}
+async function deviceNotify(title,body,tag='moni'){
+  if(localStorage.getItem('moni.notifications')!=='1'||Notification.permission!=='granted')return;
+  const reg=swRegistration||await registerMoniSW();
+  const opts={body,tag,renotify:false,icon:meteoIcon('thunderstorms-day-rain'),badge:meteoIcon('thunderstorms-day-rain'),data:{url:location.href}};
+  if(reg)reg.showNotification(title,opts);else new Notification(title,opts);
+}
+const notifyBtn=document.querySelector('#notifyBtn');if(notifyBtn){notifyBtn.onclick=enableNotifications;if(Notification.permission==='granted'&&localStorage.getItem('moni.notifications')==='1'){notifyBtn.textContent='🔔 ALERTAS DO DISPOSITIVO ATIVOS';notifyBtn.classList.add('active');}}
 
 
 
@@ -551,7 +578,7 @@ function riskAt(v){
   let n=0; if(cape>=1500)n++; if(cape>=2500)n++; if(li!=null&&li<=-6)n++; if(precip>=4)n++; if(fz!=null&&fz<4500&&cape>=1000)n++;
   return {l,hail:n>=4?'ALTO':n===3?'MODERADO':n>=1?'BAIXO':'MÍNIMO'};
 }
-const METEOCON='assets/meteocons/';
+const METEOCON='https://cdn.meteocons.com/latest/svg/fill/';
 const RISK_ICONS=['code-green','code-yellow','code-orange','code-red'];
 function meteoIcon(name){return METEOCON+name+'.svg';}
 function iconFallback(img){img.onerror=null;img.src=meteoIcon('code-yellow');}
@@ -751,9 +778,16 @@ function drawReports(){
   for(const r of reports){const t=rType(r.k);
     const reportHtml=r.k==='fire_now'?`<div class="rp rp-fire" style="border-color:${t.c}"><img src="${meteoIcon('fire-alert')}" onerror="this.onerror=null;this.src='${meteoIcon('code-red')}'" alt="Incêndio"></div>`:`<div class="rp" style="border-color:${t.c}">${t.e}</div>`;
     const mk=L.marker([r.lat,r.lon],{icon:L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],html:reportHtml})});
-    mk.bindPopup(`<b>${t.e} ${esc(t.t)}</b><br><small>${ago(r.ts)} · ✔ ${r.ok||0} · ✖ ${r.gone||0}</small>${r.note?`<p>${esc(r.note)}</p>`:''}${t.k==='wire'?'<p class="rp-warn">Perigo: mantenha distância e avise a concessionária e a Defesa Civil (199).</p>':''}<div class="rp-btns"><button data-v="ok">✔ Ainda vale</button><button data-v="gone">✖ Não está mais</button></div>`);
-    mk.on('popupopen',e=>e.popup.getElement().querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>vote(r.id,b.dataset.v)));
+    mk.bindPopup(`<b>${t.e} ${esc(t.t)}</b><br><small>${ago(r.ts)} · ✔ ${r.ok||0} · ✖ ${r.gone||0}</small>${r.note?`<p>${esc(r.note)}</p>`:''}${t.k==='wire'?'<p class="rp-warn">Perigo: mantenha distância e avise a concessionária e a Defesa Civil (199).</p>':''}<div class="rp-route"><button data-route="1">➜ TRAÇAR ROTA ATÉ AQUI</button></div><div class="rp-btns"><button data-v="ok">✔ Ainda vale</button><button data-v="gone">✖ Não está mais</button></div>`);
+    mk.on('popupopen',e=>{const root=e.popup.getElement();root.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>vote(r.id,b.dataset.v));const rb=root.querySelector('[data-route]');if(rb)rb.onclick=()=>routeToReport(r);});
     mk.addTo(rLayer);}
+}
+function routeToReport(r){
+  if(!r)return;
+  const dest=`${r.lat},${r.lon}`;
+  const origin=userPosition?`&origin=${encodeURIComponent(userPosition.lat+','+userPosition.lon)}`:'';
+  const url=`https://www.google.com/maps/dir/?api=1${origin}&destination=${encodeURIComponent(dest)}&travelmode=driving`;
+  window.open(url,'_blank','noopener,noreferrer');
 }
 function vote(id,v){
   if(myVotes[id])return toast('Você já votou neste relato.');
@@ -785,7 +819,13 @@ async function pullReports(){
     if(!x.ok){const er=await x.json().catch(()=>({}));console.warn('Relatos:',x.status,er);setRep('ERRO '+x.status);
       if(!window._repErr){window._repErr=1;toast('Relatos: erro '+x.status+(er.message?' — '+er.message:''));}return;}
     const remote=await x.json();
-    reports=remote.map(r=>({...r,ts:Date.parse(r.ts)})).concat(reports.filter(l=>l.local));
+    const previousIds=new Set(reports.map(r=>r.id));
+    const parsedRemote=remote.map(r=>({...r,ts:Date.parse(r.ts)}));
+    if(userPosition&&localStorage.getItem('moni.notifications')==='1'){
+      const nearbyNew=parsedRemote.filter(r=>!previousIds.has(r.id)&&Date.now()-r.ts<10*60e3&&kmDist(userPosition.lat,userPosition.lon,r.lat,r.lon)<=30);
+      for(const r of nearbyNew.slice(0,3)){const t=rType(r.k);if(t)deviceNotify(`MONI · ${t.t}`,`Novo relato a aproximadamente ${Math.round(kmDist(userPosition.lat,userPosition.lon,r.lat,r.lon))} km de você.`,`report-${r.id}`);}
+    }
+    reports=parsedRemote.concat(reports.filter(l=>l.local));
     drawReports();setRep(remote.length+' · OK',true);
   }catch(e){console.warn('Relatos:',e);setRep('SEM REDE');}
 }

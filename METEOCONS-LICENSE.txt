@@ -1,0 +1,3 @@
+Meteocons by Bas Milius — MIT License.
+Project: https://github.com/basmilius/meteocons
+Icons are loaded from the official Meteocons CDN using animated SVG Fill style.

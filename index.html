@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MONI Weather</title>
+  <meta name="theme-color" content="#080d12" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="stylesheet" href="style.css" />
@@ -47,7 +49,8 @@
         <button id="maxcappiRefresh" class="radar-play" type="button">↻ ATUALIZAR ANÁLISE</button>
         <div class="maxcappi-note">Renderização adaptativa · detalhes aparecem ao aproximar o mapa.<br>Experimental · previsão por extrapolação do deslocamento observado.</div>
       </div>
-      <button id="locateMe" class="locate-btn">◎ MOSTRAR MINHA LOCALIZAÇÃO</button>
+      <div id="locationStatus" class="location-auto">◎ LOCALIZAÇÃO AUTOMÁTICA · AGUARDANDO PERMISSÃO</div>
+      <button id="notifyBtn" class="locate-btn" type="button">🔔 ATIVAR ALERTAS NO DISPOSITIVO</button>
       <label><input type="checkbox" id="rain" checked> Precipitação HD <span class="tag-live">RADAR + IMERG</span></label>
       <label><input type="checkbox" id="storms" checked> Tempestades <span class="layer-count" id="stormAutoCount">0</span></label>
       <label><input type="checkbox" id="hail" checked> Potencial de granizo <span class="layer-count" id="hailAutoCount">0</span></label>

@@ -186,3 +186,10 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 .layer-count{margin-left:auto;min-width:20px;padding:1px 5px;border-radius:9px;background:#ffffff10;color:#91a2ae;font:8px Consolas,monospace;text-align:center}
 
 .moni-fire-popup{font:12px/1.45 system-ui,sans-serif;min-width:220px}.moni-fire-popup b{font-weight:800}.moni-fire-popup hr{border:0;border-top:1px solid #d8dde3;margin:7px 0}.moni-fire-popup small{opacity:.72}
+
+
+/* V5 — localização automática, rotas e notificações */
+.location-auto{margin:10px 0;padding:9px 10px;border:1px solid #26333d;border-radius:7px;font-size:11px;color:#8fa5b5;background:#0a1117}
+.location-auto.active{color:#72d6ff;border-color:#24536a;background:#09161e}
+.rp-route{margin:10px 0 6px}.rp-route button{width:100%;padding:8px 10px;border:1px solid #2f87ad;background:#0d2632;color:#8bddff;border-radius:6px;font-weight:800;cursor:pointer}
+.rp-route button:hover{background:#123747}
