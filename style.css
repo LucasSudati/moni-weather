@@ -337,3 +337,8 @@ header b,.status,.status span{white-space:nowrap}
 
 /* ---------- 12. Divisores: o título de seção já traz a linha ---------- */
 .sep{display:none}
+
+/* Página legal / acesso à licença */
+.legal-link{color:#71808b;text-decoration:none;font-size:9px;letter-spacing:.09em;white-space:nowrap;border-left:1px solid #26313d;padding-left:12px}
+.legal-link:hover{color:#7cc8ff}
+@media(max-width:760px){.legal-link{font-size:9px;padding-left:8px}}

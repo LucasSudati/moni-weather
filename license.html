@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080d12">
+  <title>Licença — MONI Weather</title>
+  <style>
+    :root{--bg:#080b0f;--panel:#0b1016;--line:#26313d;--text:#d8e2ea;--mut:#7f919f;--acc:#4ab8ff;--green:#43df86}
+    *{box-sizing:border-box}html{background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}body{margin:0;min-height:100vh;background:radial-gradient(circle at 75% 0,rgba(74,184,255,.06),transparent 32%),var(--bg)}
+    header{height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:rgba(11,16,22,.92);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;backdrop-filter:blur(12px)}
+    .brand{display:flex;align-items:center;gap:12px}.brand b{letter-spacing:.16em;background:linear-gradient(90deg,#fff,var(--acc));-webkit-background-clip:text;background-clip:text;color:transparent;font-size:15px}.brand span{color:#70808e;font-size:10px;letter-spacing:1.5px}.back{color:#8ed5ff;text-decoration:none;border:1px solid #31576a;background:#0b202b;border-radius:8px;padding:8px 11px;font-size:11px;font-weight:800}
+    main{width:min(1040px,calc(100% - 32px));margin:34px auto 60px}.eyebrow{font:700 10px Consolas,monospace;letter-spacing:.16em;color:var(--green)}h1{font-size:34px;margin:8px 0 10px;color:#f2f7fa}h2{font-size:20px;margin:34px 0 12px;padding-top:26px;border-top:1px solid var(--line)}p,li{font-size:14px;line-height:1.75;color:#b9c7d1}strong{color:#f2f7fa}.lead{font-size:16px;max-width:800px}.card{margin:22px 0;padding:20px;border:1px solid var(--line);border-radius:14px;background:rgba(11,16,22,.8)}
+    .license-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid rgba(67,223,134,.3);border-radius:99px;background:rgba(67,223,134,.08);color:#73e9a7;font:700 11px Consolas,monospace}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.mini{padding:14px;border:1px solid var(--line);border-radius:10px;background:#0d151d}.mini b{display:block;font-size:12px;margin-bottom:5px}.mini span{font-size:11px;line-height:1.5;color:var(--mut)}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.btn{display:inline-block;color:#9edcff;text-decoration:none;border:1px solid #31576a;background:#0b202b;border-radius:8px;padding:10px 13px;font-size:12px;font-weight:800}.btn.secondary{background:#10161d;color:#b7c5cf;border-color:var(--line)}
+    pre{white-space:pre-wrap;word-break:break-word;margin:0;padding:18px;background:#05090d;border:1px solid var(--line);border-radius:12px;color:#b9c7d1;font:11px/1.6 Consolas,monospace;max-height:560px;overflow:auto}.loading{color:var(--mut)}footer{border-top:1px solid var(--line);padding:22px 16px;text-align:center;color:#667784;font-size:11px}a{color:#66c7ff}
+    @media(max-width:700px){header{padding:0 12px}.brand span{display:none}main{width:min(100% - 22px,1040px);margin-top:22px}h1{font-size:27px}.grid{grid-template-columns:1fr}.lead{font-size:14px}.back{padding:7px 9px}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand"><b>MONI WEATHER</b><span>EM DESENVOLVIMENTO</span></div>
+  <a class="back" href="index.html">← VOLTAR AO MAPA</a>
+</header>
+<main>
+  <div class="eyebrow">CÓDIGO ABERTO · AVISOS LEGAIS</div>
+  <h1>Licença</h1>
+  <p class="lead">O código original do <strong>MONI Weather</strong> é disponibilizado sob a <strong>GNU Affero General Public License v3.0 (AGPL-3.0)</strong>.</p>
+  <div class="card">
+    <span class="license-badge">AGPL-3.0</span>
+    <p>A licença permite usar, estudar, modificar e redistribuir o software de acordo com seus termos. Por ser uma aplicação de rede, versões modificadas disponibilizadas a usuários pela rede também estão sujeitas às disposições específicas da AGPLv3.</p>
+    <div class="grid">
+      <div class="mini"><b>Código do MONI</b><span>Licenciado sob GNU AGPL v3.0.</span></div>
+      <div class="mini"><b>Recursos de terceiros</b><span>Mantêm suas próprias licenças e termos.</span></div>
+      <div class="mini"><b>Dados e serviços</b><span>Não são relicenciados pela licença do MONI.</span></div>
+    </div>
+  </div>
+
+  <h2>Recursos de terceiros</h2>
+  <p>Bibliotecas, ícones, mapas, dados meteorológicos, APIs e serviços externos permanecem sujeitos às licenças e aos termos de seus respectivos autores e fornecedores. Isso inclui, entre outros, Meteocons, Leaflet, MapLibre, serviços de roteamento e as fontes meteorológicas e cartográficas integradas ao projeto.</p>
+  <div class="actions">
+    <a class="btn" href="THIRD_PARTY_NOTICES.md">AVISOS DE TERCEIROS</a>
+    <a class="btn secondary" href="METEOCONS-LICENSE.txt">LICENÇA METEOCONS</a>
+    <a class="btn secondary" href="https://github.com/LucasSudati/moni-weather" target="_blank" rel="noopener">CÓDIGO-FONTE NO GITHUB</a>
+  </div>
+
+  <h2>Texto completo da GNU AGPL v3.0</h2>
+  <p>O texto abaixo é carregado diretamente do arquivo <code>LICENSE</code> publicado junto ao código do projeto.</p>
+  <pre id="licenseText" class="loading">Carregando LICENSE…</pre>
+</main>
+<footer>MONI Weather · Copyright © 2026 Lucas Sudati · GNU AGPL v3.0</footer>
+<script>
+fetch('LICENSE',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error();return r.text()}).then(function(t){var el=document.getElementById('licenseText');el.textContent=t;el.classList.remove('loading')}).catch(function(){var el=document.getElementById('licenseText');el.textContent='O arquivo LICENSE não pôde ser carregado nesta página. Consulte o texto oficial no repositório do MONI Weather.';el.classList.remove('loading')});
+</script>
+</body>
+</html>
