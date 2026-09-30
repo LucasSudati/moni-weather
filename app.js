@@ -796,6 +796,13 @@ renderLegend();
 // Relatos compartilhados via Supabase (config.js). Sem configuração, ficam só neste aparelho (localStorage).
 const CFG=window.MONI_CONFIG||{},SB_ON=!!(CFG.supabaseUrl&&CFG.supabaseKey);
 const sbFetch=(path,opt={})=>fetch(CFG.supabaseUrl+'/rest/v1/'+path,{...opt,headers:{apikey:CFG.supabaseKey,...(CFG.supabaseKey.startsWith('eyJ')?{Authorization:'Bearer '+CFG.supabaseKey}:{}),'Content-Type':'application/json',...(opt.headers||{})}});
+const reportIcon=k=>`./assets/report-icons/${({
+  shelter:'shelter',collect:'collect',distrib:'distrib',
+  tarp_have:'tarp_have',tarp_need:'tarp_need',tree:'tree',wire:'wire',
+  power_on:'power_on',power_off:'power_off',water_on:'water_on',water_off:'water_off',
+  fire_now:'fire_now'
+}[k]||'danger')}.svg`;
+const reportIconHtml=(k,t,cls='')=>`<img class="report-symbol ${cls}" src="${reportIcon(k)}" alt="${esc(t||'Relato')}">`;
 const RT=[
  {k:'hail_now',e:'🟣',t:'Granizo agora',c:'#d35cff',g:'meteo'},
  {k:'storm_now',e:'⛈️',t:'Tempestade forte agora',c:'#ff4d4d',g:'meteo'},
@@ -823,9 +830,9 @@ function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeou
 function drawReports(){
   rLayer.clearLayers();reports=reports.filter(rAlive);LSs('moni.reports',reports);
   for(const r of reports){const t=rType(r.k);
-    const reportHtml=r.k==='fire_now'?`<div class="rp rp-fire" style="border-color:${t.c}"><img src="${meteoIcon('smoke')}" onerror="this.onerror=null;this.src='${meteoIcon('not-available')}'" alt="Incêndio"></div>`:`<div class="rp" style="border-color:${t.c}">${t.e}</div>`;
-    const mk=L.marker([r.lat,r.lon],{icon:L.divIcon({className:'',iconSize:[34,34],iconAnchor:[17,17],html:reportHtml})});
-    mk.bindPopup(`<b>${t.e} ${esc(t.t)}</b><br><small>${ago(r.ts)} · ✔ ${r.ok||0} · ✖ ${r.gone||0}</small>${r.note?`<p>${esc(r.note)}</p>`:''}${t.k==='wire'?'<p class="rp-warn">Perigo: mantenha distância e avise a concessionária e a Defesa Civil (199).</p>':''}<div class="rp-route"><button data-route="1">➜ TRAÇAR ROTA ATÉ AQUI</button></div><div class="rp-btns"><button data-v="ok">✔ Ainda vale</button><button data-v="gone">✖ Não está mais</button></div>`);
+    const reportHtml=`<div class="rp rp-svg" style="border-color:${t.c}">${reportIconHtml(r.k,t.t)}</div>`;
+    const mk=L.marker([r.lat,r.lon],{icon:L.divIcon({className:'',iconSize:[38,38],iconAnchor:[19,19],html:reportHtml})});
+    mk.bindPopup(`<b class="report-popup-title">${reportIconHtml(r.k,t.t,'report-symbol-inline')} ${esc(t.t)}</b><br><small>${ago(r.ts)} · ✔ ${r.ok||0} · ✖ ${r.gone||0}</small>${r.note?`<p>${esc(r.note)}</p>`:''}${t.k==='wire'?'<p class="rp-warn">Perigo: mantenha distância e avise a concessionária e a Defesa Civil (199).</p>':''}<div class="rp-route"><button data-route="1">➜ TRAÇAR ROTA ATÉ AQUI</button></div><div class="rp-btns"><button data-v="ok">✔ Ainda vale</button><button data-v="gone">✖ Não está mais</button></div>`);
     mk.on('popupopen',e=>{const root=e.popup.getElement();root.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>vote(r.id,b.dataset.v));const rb=root.querySelector('[data-route]');if(rb)rb.onclick=()=>routeToReport(r);});
     mk.addTo(rLayer);}
 }
@@ -927,7 +934,7 @@ async function pullReports(){
     const parsedRemote=remote.map(r=>({...r,ts:Date.parse(r.ts)}));
     if(userPosition&&localStorage.getItem('moni.notifications')==='1'){
       const nearbyNew=parsedRemote.filter(r=>!previousIds.has(r.id)&&Date.now()-r.ts<10*60e3&&kmDist(userPosition.lat,userPosition.lon,r.lat,r.lon)<=30);
-      for(const r of nearbyNew.slice(0,3)){const t=rType(r.k);if(t)deviceNotify(`MONI · ${t.t}`,`Novo relato a aproximadamente ${Math.round(kmDist(userPosition.lat,userPosition.lon,r.lat,r.lon))} km de você.`,`report-${r.id}`);}
+      for(const r of nearbyNew.slice(0,3)){const t=rType(r.k);if(t)deviceNotify(`MONI · ${t.t}`,`Novo relato a aproximadamente ${Math.round(kmDist(userPosition.lat,userPosition.lon,r.lat,r.lon))} km de você.`,`report-${r.id}`,reportIcon(r.k));}
     }
     reports=parsedRemote.concat(reports.filter(l=>l.local));
     drawReports();setRep(remote.length+' · OK',true);

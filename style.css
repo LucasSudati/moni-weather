@@ -217,3 +217,12 @@ body.report-open{overflow:hidden}
 .route-next{flex:1;min-width:0}.route-next b{display:block;font:800 13px system-ui,sans-serif}.route-next small{display:block;margin-top:3px;color:#9fb2bf;font:10px system-ui,sans-serif}
 #routeEnd{color:#ff9b9b;border-color:#6c3333;background:#271112}.route-user{width:18px;height:18px;border-radius:50%;background:#72d6ff;border:3px solid #fff;box-shadow:0 0 0 5px #72d6ff44}.route-dest{font-size:28px;filter:drop-shadow(0 2px 3px #000)}
 @media(max-width:600px){.route-topbar{top:max(8px,env(safe-area-inset-top));left:8px;right:8px}.route-bottom{left:8px;right:8px}.route-topbar button,.route-bottom button{padding:8px}.route-bottom{align-items:stretch;flex-direction:column}#routeEnd{width:100%}}
+
+/* V5.11 — unified report icon system */
+.rp.rp-svg{width:38px;height:38px;border:0;background:transparent;box-shadow:none}
+.report-symbol{width:38px;height:38px;display:block;object-fit:contain}
+.report-symbol-inline{width:24px;height:24px;display:inline-block;vertical-align:middle;margin-right:5px}
+.report-popup-title{display:flex;align-items:center;gap:4px}
+.rs-type-icon{width:34px;height:34px;display:block;margin:0 auto 5px;object-fit:contain}
+.rs-grid button{min-height:74px}
+.rs-grid button small{display:block;line-height:1.15}

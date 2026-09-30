@@ -1,5 +1,5 @@
-const CACHE='moni-v5.10-notification-icons';
-const SHELL=['./','./index.html','./style.css','./app.js','./config.js','./manifest.webmanifest'];
+const CACHE='moni-v5.11-unified-report-icons';
+const SHELL=['./','./index.html','./style.css','./app.js','./config.js','./manifest.webmanifest','./assets/report-icons/block.svg','./assets/report-icons/collect.svg','./assets/report-icons/danger.svg','./assets/report-icons/distrib.svg','./assets/report-icons/fire_now.svg','./assets/report-icons/power_off.svg','./assets/report-icons/power_on.svg','./assets/report-icons/shelter.svg','./assets/report-icons/tarp_have.svg','./assets/report-icons/tarp_need.svg','./assets/report-icons/tree.svg','./assets/report-icons/water_off.svg','./assets/report-icons/water_on.svg','./assets/report-icons/wire.svg'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).catch(()=>{})));
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});

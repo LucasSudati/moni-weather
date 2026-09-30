@@ -152,8 +152,11 @@
       TYPES.forEach(function(t){
         var b=document.createElement('button');
         b.type='button'; b.dataset.k=t[0]; b.style.setProperty('--c',t[3]);
-        var sp=document.createElement('span'); sp.textContent=t[1];
-        b.appendChild(sp); b.appendChild(document.createTextNode(t[2]));
+        var weather={hail_now:'https://cdn.meteocons.com/latest/svg/fill/hail.svg',storm_now:'https://cdn.meteocons.com/latest/svg/fill/thunderstorms-day-rain.svg',heavy_rain:'https://cdn.meteocons.com/latest/svg/fill/extreme-rain.svg'};
+        var src=weather[t[0]]||('./assets/report-icons/'+t[0]+'.svg');
+        var im=document.createElement('img'); im.className='rs-type-icon'; im.src=src; im.alt='';
+        b.appendChild(im);
+        var tx=document.createElement('small'); tx.textContent=t[2]; b.appendChild(tx);
         grid.appendChild(b);
       });
     }
