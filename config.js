@@ -12,3 +12,6 @@ window.MONI_CONFIG.radarApiUrl = window.MONI_CONFIG.radarApiUrl || (window.MONI_
 
 // MONI MAXCAPPI Analyzer v5.4 — células, tracking e nowcast.
 window.MONI_CONFIG.maxcappiAnalyzeUrl = window.MONI_CONFIG.maxcappiAnalyzeUrl || (window.MONI_CONFIG.supabaseUrl + '/functions/v1/maxcappi-analyze');
+
+// Focos ativos INPE — proxy da Edge Function (sem segredos no frontend).
+window.MONI_CONFIG.fireApiUrl = window.MONI_CONFIG.fireApiUrl || (window.MONI_CONFIG.supabaseUrl + '/functions/v1/fires');

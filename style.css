@@ -184,3 +184,5 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 /* V3: precipitação HD + classificação automática MAXCAPPI */
 .leaflet-pane.leaflet-precipHdPane-pane img{image-rendering:auto!important;mix-blend-mode:screen}
 .layer-count{margin-left:auto;min-width:20px;padding:1px 5px;border-radius:9px;background:#ffffff10;color:#91a2ae;font:8px Consolas,monospace;text-align:center}
+
+.moni-fire-popup{font:12px/1.45 system-ui,sans-serif;min-width:220px}.moni-fire-popup b{font-weight:800}.moni-fire-popup hr{border:0;border-top:1px solid #d8dde3;margin:7px 0}.moni-fire-popup small{opacity:.72}
