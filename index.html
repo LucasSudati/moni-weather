@@ -90,15 +90,15 @@
     <span id="coords">LAT -- / LON --</span>
   </footer>
 
-  <button id="reportFab" aria-label="Reportar situação">＋ REPORTAR</button>
+  <button id="reportFab" type="button" aria-label="Reportar situação">＋ REPORTAR</button>
   <div id="reportSheet" hidden>
     <div class="rs-back"></div>
     <div class="rs-card" role="dialog" aria-modal="true" aria-labelledby="rsTitle">
-      <div class="rs-head"><b id="rsTitle">O que está acontecendo aqui?</b><button id="rsClose" aria-label="Fechar">✕</button></div>
+      <div class="rs-head"><b id="rsTitle">O que está acontecendo aqui?</b><button id="rsClose" type="button" aria-label="Fechar">✕</button></div>
       <div id="rsGrid" class="rs-grid"></div>
       <div id="rsWarn" class="rs-warn"></div>
       <textarea id="rsNote" maxlength="140" placeholder="Detalhe opcional (rua, horário…). Não inclua nomes nem telefones."></textarea>
-      <div class="rs-loc"><button id="rsGps">◎ Minha localização</button><button id="rsPick">📍 Marcar no mapa</button></div>
+      <div class="rs-loc"><button id="rsGps" type="button">◎ Minha localização</button><button id="rsPick" type="button">📍 Marcar no mapa</button></div>
       <p class="rs-sos">Risco de vida? Ligue 193 (Bombeiros), 192 (SAMU) ou 199 (Defesa Civil). Este mapa é colaborativo, não verificado e não é canal oficial.</p>
     </div>
   </div>

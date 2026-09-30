@@ -832,8 +832,22 @@ async function pullReports(){
 // UI
 $('#rsGrid').innerHTML=RT.map(t=>`<button data-k="${t.k}" style="--c:${t.c}"><span>${t.e}</span>${esc(t.t)}</button>`).join('');
 $('#rsGrid').onclick=e=>{const b=e.target.closest('button');if(!b)return;rSel=b.dataset.k;[...$('#rsGrid').children].forEach(x=>x.classList.toggle('sel',x===b));$('#rsWarn').textContent=rSel==='wire'?'Não se aproxime do fio. Avise a concessionária de energia e a Defesa Civil (199).':'';};
-$('#reportFab').onclick=()=>{rSel=null;[...$('#rsGrid').children].forEach(x=>x.classList.remove('sel'));$('#rsNote').value='';$('#rsWarn').textContent='';$('#reportSheet').hidden=false;};
-const closeSheet=()=>{$('#reportSheet').hidden=true;};
+function openReportSheet(){
+  rSel=null;
+  [...$('#rsGrid').children].forEach(x=>x.classList.remove('sel'));
+  $('#rsNote').value='';
+  $('#rsWarn').textContent='';
+  const sheet=$('#reportSheet');
+  sheet.hidden=false;
+  sheet.removeAttribute('hidden');
+  document.body.classList.add('report-open');
+}
+const reportFab=$('#reportFab');
+if(reportFab){
+  reportFab.addEventListener('click',openReportSheet);
+  reportFab.addEventListener('touchend',e=>{e.preventDefault();openReportSheet();},{passive:false});
+}
+const closeSheet=()=>{const sheet=$('#reportSheet');sheet.hidden=true;sheet.setAttribute('hidden','');document.body.classList.remove('report-open');};
 $('#rsClose').onclick=closeSheet;$('.rs-back').onclick=closeSheet;
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();});
 $('#rsGps').onclick=()=>{
