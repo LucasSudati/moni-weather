@@ -814,8 +814,17 @@ async function routeToReport(r){
     if(!routeApi)throw new Error('ROUTE_API_NOT_CONFIGURED');
     const u=`${routeApi}?from=${encodeURIComponent(userPosition.lat+','+userPosition.lon)}&to=${encodeURIComponent(r.lat+','+r.lon)}`;
     const res=await fetch(u,{headers:{'Accept':'application/json'}});
-    const data=await res.json().catch(()=>({}));if(!res.ok||data.code!=='Ok'||!data.routes?.[0])throw new Error(data.message||data.code||'Sem rota');
-    const rr=data.routes[0];routeGeo=rr.geometry;routeSummary.textContent=`${routeKm(rr.distance)} · ~${routeTime(rr.duration)}`;routeInstruction.textContent=routeManeuver(rr.legs?.[0]?.steps?.[0]);routeProgress.textContent=`Destino: ${rType(r.k)?.t||'relato da comunidade'}`;
+    const data=await res.json().catch(()=>({}));
+    // route v2.1 devolve a rota principal em `route`.
+    // Mantemos compatibilidade também com respostas OSRM puras (`routes[0]`).
+    const rr=data.route || data.routes?.[0];
+    if(!res.ok || data.ok===false || !rr?.geometry?.coordinates?.length){
+      throw new Error(data.message || data.error || data.code || 'Sem rota');
+    }
+    routeGeo=rr.geometry;
+    routeSummary.textContent=`${routeKm(rr.distance)} · ~${routeTime(rr.duration)}`;
+    routeInstruction.textContent=routeManeuver(rr.legs?.[0]?.steps?.[0]);
+    routeProgress.textContent=`Destino: ${rType(r.k)?.t||'relato da comunidade'}`;
     initRouteMap(rr);
   }catch(e){console.error('Rota:',e);routeInstruction.textContent='Não foi possível calcular a rota';routeProgress.textContent=e?.message==='NoRoute'?'Não foi encontrada uma rota rodoviária entre os pontos.':'Serviço de rotas indisponível. Tente novamente em instantes.';}
 }
