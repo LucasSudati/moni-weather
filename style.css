@@ -204,3 +204,16 @@ body.report-open{overflow:hidden}
 /* V5.2 — REPORTAR independente do mapa/Leaflet */
 #reportFab{z-index:2147483000!important;position:fixed!important;pointer-events:auto!important;isolation:isolate}
 #reportSheet{z-index:2147483001!important}
+
+
+/* V5.6 — navegação interna 2D/3D */
+#routeNav{position:fixed;inset:0;z-index:2147483002;background:#071017}
+#routeNav[hidden]{display:none!important}
+#route3dMap{position:absolute;inset:0}
+.route-topbar{position:absolute;z-index:10;left:12px;right:12px;top:12px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px;background:#071017e8;border:1px solid #263a47;border-radius:10px;backdrop-filter:blur(8px);color:#e9f4fa}
+.route-topbar div{min-width:0}.route-topbar b{display:block;font:800 12px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.route-topbar small{display:block;margin-top:2px;color:#9fb2bf;font:10px system-ui,sans-serif}
+.route-topbar button,.route-bottom button{border:1px solid #31576a;background:#0b202b;color:#8bddff;border-radius:7px;padding:9px 11px;font-weight:800;cursor:pointer}
+.route-bottom{position:absolute;z-index:10;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center;padding:11px;background:#071017ed;border:1px solid #263a47;border-radius:10px;backdrop-filter:blur(8px);color:#e9f4fa}
+.route-next{flex:1;min-width:0}.route-next b{display:block;font:800 13px system-ui,sans-serif}.route-next small{display:block;margin-top:3px;color:#9fb2bf;font:10px system-ui,sans-serif}
+#routeEnd{color:#ff9b9b;border-color:#6c3333;background:#271112}.route-user{width:18px;height:18px;border-radius:50%;background:#72d6ff;border:3px solid #fff;box-shadow:0 0 0 5px #72d6ff44}.route-dest{font-size:28px;filter:drop-shadow(0 2px 3px #000)}
+@media(max-width:600px){.route-topbar{top:max(8px,env(safe-area-inset-top));left:8px;right:8px}.route-bottom{left:8px;right:8px}.route-topbar button,.route-bottom button{padding:8px}.route-bottom{align-items:stretch;flex-direction:column}#routeEnd{width:100%}}

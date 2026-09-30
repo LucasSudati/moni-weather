@@ -784,13 +784,43 @@ function drawReports(){
     mk.on('popupopen',e=>{const root=e.popup.getElement();root.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>vote(r.id,b.dataset.v));const rb=root.querySelector('[data-route]');if(rb)rb.onclick=()=>routeToReport(r);});
     mk.addTo(rLayer);}
 }
-function routeToReport(r){
-  if(!r)return;
-  const dest=`${r.lat},${r.lon}`;
-  const origin=userPosition?`&origin=${encodeURIComponent(userPosition.lat+','+userPosition.lon)}`:'';
-  const url=`https://www.google.com/maps/dir/?api=1${origin}&destination=${encodeURIComponent(dest)}&travelmode=driving`;
-  window.open(url,'_blank','noopener,noreferrer');
+// ========================= navegação interna 2D / 3D =========================
+let routeMap=null,routeReport=null,routeGeo=null,routeUserMarker=null,routeDestMarker=null,route3D=true,routeWatch=null;
+const routeNav=document.getElementById('routeNav'),routeSummary=document.getElementById('routeSummary'),routeInstruction=document.getElementById('routeInstruction'),routeProgress=document.getElementById('routeProgress');
+const routeKm=m=>m>=1000?`${(m/1000).toFixed(m>=10000?0:1)} km`:`${Math.round(m)} m`;
+const routeTime=s=>{const m=Math.max(1,Math.round(s/60));return m>=60?`${Math.floor(m/60)} h ${m%60} min`:`${m} min`;};
+function routeBearing(a,b){const r=Math.PI/180,p1=a.lat*r,p2=b.lat*r,dl=(b.lon-a.lon)*r;return (Math.atan2(Math.sin(dl)*Math.cos(p2),Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl))*180/Math.PI+360)%360;}
+function routeManeuver(step){const m=step?.maneuver||{},mod=m.modifier||'',type=m.type||'';if(type==='arrive')return 'Você chegou ao destino';if(type==='depart')return `Siga por ${step.name||'esta via'}`;const dirs={'left':'Vire à esquerda','right':'Vire à direita','slight left':'Mantenha-se levemente à esquerda','slight right':'Mantenha-se levemente à direita','sharp left':'Faça uma curva fechada à esquerda','sharp right':'Faça uma curva fechada à direita','straight':'Siga em frente','uturn':'Faça o retorno'};return `${dirs[mod]||'Continue'}${step.name?' em '+step.name:''}`;}
+function routeSetMode(is3d){route3D=is3d;document.getElementById('routeMode').textContent=is3d?'3D':'2D';if(routeMap){routeMap.easeTo({pitch:is3d?62:0,bearing:is3d?(routeMap.getBearing()||0):0,duration:600});}}
+async function routeToReport(r){
+  if(!r)return;if(!userPosition){toast('Aguardando sua localização para calcular a rota.');return;}
+  routeReport=r;routeNav.hidden=false;document.body.classList.add('route-open');routeSummary.textContent='Calculando…';routeInstruction.textContent='Calculando rota…';routeProgress.textContent='Sua localização → destino';
+  try{
+    const u=`https://router.project-osrm.org/route/v1/driving/${userPosition.lon},${userPosition.lat};${r.lon},${r.lat}?overview=full&geometries=geojson&steps=true`;
+    const res=await fetch(u);const data=await res.json();if(!res.ok||data.code!=='Ok'||!data.routes?.[0])throw new Error(data.code||'Sem rota');
+    const rr=data.routes[0];routeGeo=rr.geometry;routeSummary.textContent=`${routeKm(rr.distance)} · ~${routeTime(rr.duration)}`;routeInstruction.textContent=routeManeuver(rr.legs?.[0]?.steps?.[0]);routeProgress.textContent=`Destino: ${rType(r.k)?.t||'relato da comunidade'}`;
+    initRouteMap(rr);
+  }catch(e){console.error('Rota:',e);routeInstruction.textContent='Não foi possível calcular a rota';routeProgress.textContent='Verifique sua conexão e tente novamente.';}
 }
+function initRouteMap(rr){
+  if(routeMap){routeMap.remove();routeMap=null;}
+  routeMap=new maplibregl.Map({container:'route3dMap',style:'https://tiles.openfreemap.org/styles/bright',center:[userPosition.lon,userPosition.lat],zoom:15,pitch:62,bearing:0,attributionControl:true});
+  routeMap.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');
+  routeMap.on('load',()=>{
+    routeMap.addSource('moni-route',{type:'geojson',data:{type:'Feature',properties:{},geometry:routeGeo}});
+    routeMap.addLayer({id:'moni-route-shadow',type:'line',source:'moni-route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#071017','line-width':10,'line-opacity':.55}});
+    routeMap.addLayer({id:'moni-route-line',type:'line',source:'moni-route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#42c7ff','line-width':6}});
+    routeUserMarker=new maplibregl.Marker({element:Object.assign(document.createElement('div'),{className:'route-user'})}).setLngLat([userPosition.lon,userPosition.lat]).addTo(routeMap);
+    const de=document.createElement('div');de.className='route-dest';de.textContent=rType(routeReport.k)?.e||'●';routeDestMarker=new maplibregl.Marker({element:de}).setLngLat([routeReport.lon,routeReport.lat]).addTo(routeMap);
+    const coords=routeGeo.coordinates,b=new maplibregl.LngLatBounds(coords[0],coords[0]);coords.forEach(c=>b.extend(c));routeMap.fitBounds(b,{padding:{top:100,bottom:130,left:45,right:45},pitch:route3D?55:0,duration:700});setTimeout(()=>followRouteUser(userPosition),800);
+  });
+  if(routeWatch!==null)navigator.geolocation.clearWatch(routeWatch);
+  if(navigator.geolocation)routeWatch=navigator.geolocation.watchPosition(pos=>{const np={lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy,heading:pos.coords.heading};followRouteUser(np);},()=>{}, {enableHighAccuracy:true,maximumAge:3000,timeout:12000});
+}
+function followRouteUser(pos){if(!routeMap||!routeUserMarker)return;routeUserMarker.setLngLat([pos.lon,pos.lat]);const b=Number.isFinite(pos.heading)?pos.heading:(routeReport?routeBearing(pos,{lat:routeReport.lat,lon:routeReport.lon}):routeMap.getBearing());if(route3D)routeMap.easeTo({center:[pos.lon,pos.lat],zoom:16.5,pitch:62,bearing:b,duration:900,offset:[0,100]});const d=routeReport?kmDist(pos.lat,pos.lon,routeReport.lat,routeReport.lon):0;routeProgress.textContent=d<.05?'Você chegou ao destino':`${routeKm(d*1000)} em linha reta até o destino`;}
+function endRoute(){if(routeWatch!==null&&navigator.geolocation){navigator.geolocation.clearWatch(routeWatch);routeWatch=null;}if(routeMap){routeMap.remove();routeMap=null;}routeNav.hidden=true;document.body.classList.remove('route-open');routeReport=routeGeo=routeUserMarker=routeDestMarker=null;}
+document.getElementById('routeBack')?.addEventListener('click',endRoute);document.getElementById('routeEnd')?.addEventListener('click',endRoute);document.getElementById('routeMode')?.addEventListener('click',()=>routeSetMode(!route3D));
+
 function vote(id,v){
   if(myVotes[id])return toast('Você já votou neste relato.');
   const r=reports.find(x=>x.id===id);if(!r)return;
