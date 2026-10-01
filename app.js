@@ -819,7 +819,7 @@ const lgOn=id=>{const el=document.querySelector('#'+id);return !!(el&&el.checked
 const lgRow=(c,t,sm='')=>`<div class="row"><span class="sw" style="background:${c}"></span>${t}${sm?`<small>${sm}</small>`:''}</div>`;
 const lgSec=(t,em,body,note='')=>`<div class="lg"><h4>${t}${em?`<em>${em}</em>`:''}</h4>${body}${note?`<p>${note}</p>`:''}</div>`;
 function renderLegend(){
-  const el=document.querySelector('#legend');
+  const el=document.querySelector('#legendBox');
   if(!el)return;
 
   const on=id=>!!document.querySelector('#'+id)?.checked;
