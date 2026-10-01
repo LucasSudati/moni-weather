@@ -695,7 +695,7 @@ async function inspect(lat,lon){
   try{
     const r=await fetchT(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=${cv}&hourly=${hv}&past_hours=12&forecast_hours=13&wind_speed_unit=kmh&timezone=America%2FSao_Paulo`);
     if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();
-    pt={lat,lon,h:d.hourly||{},current:d.current||{}}; if(!lightningEnabled){document.querySelector('#lightning').checked=true;setGlm(true);setTimeout(renderPoint,900);} renderPoint();
+    pt={lat,lon,h:d.hourly||{},current:d.current||{}}; renderPoint();
   }catch(e){p.textContent='Falha ao consultar dados meteorológicos. '+e.message;}
 }
 function renderPoint(){
