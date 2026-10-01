@@ -401,3 +401,14 @@ header b,.status,.status span{white-space:nowrap}
 /* Focos térmicos — termômetro usado apenas no balão/popup */
 .fire-popup-title{display:flex;align-items:center;gap:6px;margin-bottom:2px}
 .fire-popup-title img{width:25px;height:25px;object-fit:contain;flex:0 0 25px}
+
+/* Banner de risco + condições meteorológicas básicas */
+#riskBar .riskbar-main-icon{width:34px;height:34px;object-fit:contain;flex:none}
+#riskBar .riskbar-copy{min-width:0;display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+#riskBar .riskbar-copy b{font-size:13px;letter-spacing:.02em}
+#riskBar .riskbar-copy span{color:#91a2ae;font-weight:500;overflow:hidden;text-overflow:ellipsis}
+#riskBar .riskbar-weather{margin-left:auto;display:flex;align-items:center;gap:5px;color:#dce7ef}
+#riskBar .riskbar-metric{display:flex;align-items:center;gap:4px;min-height:30px;padding:3px 7px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.035);white-space:nowrap;font:600 10px/1.15 Consolas,monospace}
+#riskBar .riskbar-metric img{width:22px;height:22px;object-fit:contain;flex:none}
+#riskBar .riskbar-metric small{color:#81929e;font-size:8px;font-weight:500;margin-left:1px}
+@media(max-width:760px){#riskBar{align-items:flex-start;flex-wrap:wrap;gap:6px 8px}#riskBar .riskbar-main-icon{width:32px;height:32px}#riskBar .riskbar-copy{flex:1;min-width:calc(100% - 42px);display:block;white-space:normal}#riskBar .riskbar-copy b{display:block}#riskBar .riskbar-copy span{display:block;margin-top:1px;font-size:10px}#riskBar .riskbar-weather{width:100%;margin-left:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}#riskBar .riskbar-metric{min-width:0;padding:3px 6px}#riskBar .riskbar-metric img{width:20px;height:20px}}

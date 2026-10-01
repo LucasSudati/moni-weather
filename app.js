@@ -654,7 +654,21 @@ function setRisk(L0,details={}){
   const rainEv=ev.find(x=>x.kind==='rain'); if(rainEv)a.push(civilAlert('rain',rainEv.title,rainEv.text,'warning'));
   if(Number(details.gust)>=80)a.push(civilAlert('tornado','Vento muito forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'danger')); else if(Number(details.gust)>=60)a.push(civilAlert('wind','Vento forte',`Rajadas estimadas em ${Math.round(details.gust)} km/h.`,'warning'));
   document.querySelector('#civilAlerts').innerHTML=a.slice(0,4).join('');
-  const bar=document.querySelector('#riskBar');bar.innerHTML=`<img src="${icon.src}" alt=""><span>RISCO ${L0.t} — ${L0.m}</span>`;bar.style.borderColor=bar.style.color=L0.c;bar.classList.add('on');
+  const bar=document.querySelector('#riskBar');
+  const wxNum=(x,d=0)=>Number.isFinite(Number(x))?Number(x).toFixed(d):'--';
+  const temp=wxNum(details.temp,1), rh=wxNum(details.rh,0), precip=wxNum(details.precip,1), wind=wxNum(details.wind,1), gust=wxNum(details.gust,1);
+  const gustExtra=Number.isFinite(Number(details.gust))&&Number(details.gust)>Number(details.wind||0)+5?`<small>raj. ${gust}</small>`:'';
+  bar.innerHTML=`
+    <img class="riskbar-main-icon" src="${icon.src}" alt="">
+    <div class="riskbar-copy"><b>RISCO ${L0.t}</b><span>${L0.m}</span></div>
+    <div class="riskbar-weather" aria-label="Condições meteorológicas no ponto selecionado">
+      <div class="riskbar-metric" title="Temperatura"><img src="./assets/meteocons/thermometer.svg" alt=""><span>${temp} °C</span></div>
+      <div class="riskbar-metric" title="Umidade relativa"><img src="./assets/meteocons/humidity.svg" alt=""><span>${rh}%</span></div>
+      <div class="riskbar-metric" title="Precipitação"><img src="./assets/meteocons/raindrop.svg" alt=""><span>${precip} mm/h</span></div>
+      <div class="riskbar-metric" title="Vento"><img src="./assets/meteocons/wind.svg" alt=""><span>${wind} km/h</span>${gustExtra}</div>
+    </div>`;
+  bar.style.borderColor=bar.style.color=L0.c;
+  bar.classList.add('on');
 }
 
 // Ponto selecionado: observação (-12h) + previsão (+12h) do Open-Meteo, ligada à timeline.
@@ -675,7 +689,7 @@ function renderPoint(){
   const v={cape:Number(g('cape')||0),gust:Number(val('wind_gusts_10m')||0),precip:Number(val('precipitation')||0),weatherCode:Number(val('weather_code')||0),li:g('lifted_index'),cin:g('convective_inhibition'),fz:g('freezing_level_height')};
   const F=fuseSituation(v,pt.lat,pt.lon),L0=LV[F.level];
   document.querySelector('#point').innerHTML=`${pt.lat.toFixed(3)}, ${pt.lon.toFixed(3)} · ${n===0?'AGORA':n>0?'+'+n+' h':n+' h'}<br><br>TEMP ${val('temperature_2m')??'--'} °C<br>PRECIP ${v.precip} mm/h<br>UMIDADE ${val('relative_humidity_2m')??'--'} %<br>NUVENS ${val('cloud_cover')??'--'} %<br>VENTO ${val('wind_speed_10m')??'--'} km/h<br>RAJADA ${v.gust} km/h<br>CÓDIGO TEMPO ${v.weatherCode||'--'}<br>CAPE ${v.cape} J/kg<br>LI ${v.li??'--'} · ISOTERMA 0° ${v.fz!=null?Math.round(v.fz):'--'} m<br><br>SITUAÇÃO ${L0.t}<br>GRANIZO ${F.hail}<br>RAIOS PRÓXIMOS ${F.bolts.length}<br>RELATOS METEO ${F.reps.length}<br>FOGO (CONDIÇÃO) ${fireWx(Number(val('relative_humidity_2m')),v.gust,v.precip,Number(val('temperature_2m')))}`;
-  setRisk(L0,{...v,hail:F.hail,evidence:F.evidence});
+  setRisk(L0,{...v,temp:Number(val('temperature_2m')),rh:Number(val('relative_humidity_2m')),wind:Number(val('wind_speed_10m')),hail:F.hail,evidence:F.evidence});
   weatherLayer.clearLayers();stormLayer.clearLayers();hailLayer.clearLayers();
   L.circleMarker([pt.lat,pt.lon],{radius:5,weight:1,color:'#dce7ef',fillColor:'#37a8ff',fillOpacity:.9}).addTo(weatherLayer);
   if(F.level>0)L.circle([pt.lat,pt.lon],{radius:25000,color:L0.c,weight:1,fillColor:L0.c,fillOpacity:.12}).bindTooltip(L0.t).addTo(stormLayer);
