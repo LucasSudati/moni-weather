@@ -1141,6 +1141,43 @@ function mcHailPotential(c){
   if((i==='very_strong'&&dbz>=50)||cores>=3&&dbz>=50)return {level:1,label:'POTENCIAL BAIXO',color:'#8f70ff'};
   return null;
 }
+// ========================= MOTOR DE EVIDÊNCIAS MONI · FASE 1 =========================
+// Infraestrutura somente: não substitui a classificação atual nem altera o mapa.
+const MONI_EVIDENCE_VERSION='0.1';
+function moniClampLevel(v){return Math.max(0,Math.min(3,Number(v)||0));}
+function moniConfidenceLabel(s){return s>=.78?'ALTA':s>=.48?'MODERADA':s>0?'BAIXA':'INDETERMINADA';}
+function evidenceRadar(cell){
+  if(!cell)return {source:'radar',available:false,storm:0,hail:0,weight:0,details:[]};
+  const s=mcStormClass(cell),h=mcHailPotential(cell),dbz=Number(cell.max_estimated_dbz),details=[];
+  if(Number.isFinite(dbz))details.push(`${dbz.toFixed(1)} dBZ`);if(cell.intensity)details.push(String(cell.intensity).toUpperCase());if(cell.has_magenta)details.push('núcleo magenta');
+  return {source:'radar',available:true,storm:moniClampLevel(s?.level||0),hail:moniClampLevel(h?.level||0),weight:1,details};
+}
+function evidenceModel(v){
+  if(!v)return {source:'modelo',available:false,storm:0,hail:0,weight:0,details:[]};
+  const b=riskAt(v),details=[];if(Number.isFinite(Number(v.cape)))details.push(`CAPE ${Math.round(Number(v.cape))} J/kg`);if(Number.isFinite(Number(v.li)))details.push(`LI ${Number(v.li).toFixed(1)}`);if(Number.isFinite(Number(v.fz)))details.push(`0 °C ${Math.round(Number(v.fz))} m`);
+  const hail=b.hail==='ALTO'?3:b.hail==='MODERADO'?2:b.hail==='BAIXO'?1:0;
+  return {source:'modelo',available:true,storm:moniClampLevel(b.l),hail,weight:.75,details};
+}
+function evidenceLightning(lat,lon,km=50){
+  if(!Number.isFinite(Number(lat))||!Number.isFinite(Number(lon)))return {source:'glm',available:false,storm:0,hail:0,weight:0,details:[]};
+  if(!lightningEnabled&&!glmFeatures.length)return {source:'glm',available:false,storm:0,hail:0,weight:0,details:['GLM sem dados carregados']};
+  const b=nearbyLightning(Number(lat),Number(lon),km),n=b.length,near=n?Math.min(...b.map(x=>kmDist(Number(lat),Number(lon),x.lat,x.lon))):null;
+  return {source:'glm',available:true,storm:n>=20?3:n>=8?2:n?1:0,hail:0,weight:.8,details:n?[`${n} detecções em ${km} km`,`mais próxima ~${Math.round(near)} km`]:['sem detecções próximas']};
+}
+function evidenceReports(lat,lon,km=25){
+  if(!Number.isFinite(Number(lat))||!Number.isFinite(Number(lon)))return {source:'comunidade',available:false,storm:0,hail:0,weight:0,details:[]};
+  const rs=nearbyWeatherReports(Number(lat),Number(lon),km);let storm=0,hail=0;const details=[];
+  for(const r of rs){if(r.k==='hail_now'){storm=Math.max(storm,3);hail=3;}else if(r.k==='storm_now')storm=Math.max(storm,2);else if(r.k==='heavy_rain')storm=Math.max(storm,1);details.push(rType(r.k).t);}
+  return {source:'comunidade',available:true,storm,hail,weight:.7,details};
+}
+function evidenceSatellite(){return {source:'satellite',available:false,storm:0,hail:0,weight:0,details:['GOES-19 IR ainda sem dado numérico por ponto']};}
+function fuseStormEvidence({cell=null,weather=null,lat=null,lon=null}={}){
+  const evidence=[evidenceRadar(cell),evidenceModel(weather),evidenceLightning(lat,lon),evidenceSatellite(),evidenceReports(lat,lon)],available=evidence.filter(e=>e.available);
+  function fuse(kind){const a=available.filter(e=>Number(e[kind])>0);if(!a.length)return {level:0,confidence:0,confidenceLabel:'INDETERMINADA',sources:[]};const level=Math.max(...a.map(e=>moniClampLevel(e[kind]))),support=a.reduce((s,e)=>s+e.weight*(e[kind]/3),0),diversity=Math.min(1,a.length/3),confidence=Math.min(1,(support/1.8)*.72+diversity*.28);return {level,confidence,confidenceLabel:moniConfidenceLabel(confidence),sources:a.map(e=>e.source)};}
+  return {version:MONI_EVIDENCE_VERSION,storm:fuse('storm'),hail:fuse('hail'),evidence,missingSources:evidence.filter(e=>!e.available).map(e=>e.source)};
+}
+window.moniEvidenceAt=fuseStormEvidence;
+
 function drawMaxcappiHazards(data){
   autoStormLayer.clearLayers();autoHailLayer.clearLayers();
   const cells=mcVisibleCells(Array.isArray(data?.cells)?data.cells:[]),z=map.getZoom();
