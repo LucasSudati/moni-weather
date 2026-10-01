@@ -464,3 +464,67 @@ header b,.status,.status span{white-space:nowrap}
 .risk-metric-popover-body p{margin:10px 0 0;color:#a9bac5}
 .risk-metric-popover-body .risk-metric-limit{padding-top:9px;border-top:1px solid rgba(255,255,255,.07);color:#8196a4}
 @media(max-width:760px){.risk-metric-popover{bottom:18px}}
+
+
+/* ---------- Legenda MONI atualizada ---------- */
+#legend .legend-card{
+  padding:10px 11px;
+}
+#legend .legend-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:7px;
+}
+#legend .legend-title>span{
+  font-size:9px;
+  font-weight:500;
+  letter-spacing:0;
+  text-transform:none;
+  color:#718895;
+  white-space:nowrap;
+}
+#legend .legend-row{
+  display:grid;
+  grid-template-columns:12px minmax(0,1fr) auto;
+  align-items:center;
+  column-gap:7px;
+  min-height:19px;
+}
+#legend .legend-row i{
+  display:block;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:var(--lc);
+  box-shadow:0 0 8px color-mix(in srgb,var(--lc) 28%,transparent);
+}
+#legend .legend-row b{
+  font-size:10px;
+  font-weight:600;
+  color:#cbd8df;
+}
+#legend .legend-row small{
+  max-width:105px;
+  text-align:right;
+  font-size:8.5px;
+  line-height:1.15;
+  color:#748b98;
+}
+#legend .legend-card p{
+  margin:6px 0 0;
+  color:#718793;
+  font-size:8.5px;
+  line-height:1.35;
+}
+#legend .legend-disclaimer{
+  padding:3px 1px 2px;
+  color:#91a2ad;
+  font-size:9px;
+  line-height:1.45;
+}
+#legend .legend-reports .legend-row i{
+  width:10px;
+  height:10px;
+}

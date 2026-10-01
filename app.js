@@ -819,18 +819,69 @@ const lgOn=id=>{const el=document.querySelector('#'+id);return !!(el&&el.checked
 const lgRow=(c,t,sm='')=>`<div class="row"><span class="sw" style="background:${c}"></span>${t}${sm?`<small>${sm}</small>`:''}</div>`;
 const lgSec=(t,em,body,note='')=>`<div class="lg"><h4>${t}${em?`<em>${em}</em>`:''}</h4>${body}${note?`<p>${note}</p>`:''}</div>`;
 function renderLegend(){
-  const risk=['','CAPE ≥ 800','CAPE ≥ 1500 · rajada ≥ 60','CAPE ≥ 2500 · rajada ≥ 80'];
-  const S=[lgSec('RISCO NO PONTO','clique no mapa',LV.map((l,i)=>lgRow(l.c,l.t,risk[i])).join(''),'Ajustado por índice de instabilidade (LI) e inibição (CIN). Vale para a hora da timeline.')];
-  if(lgOn('ir'))S.push(lgSec('NÚCLEOS FRIOS (IR)','área do núcleo',lgRow('#ffd34d','Convectiva','150+ km²')+lgRow('#ff9a3d','Forte','840+ km²')+lgRow('#ff4d4d','Severa','2.300+ km²'),'Na imagem IR, amarelo → vermelho indicam topos de nuvem mais frios. Detecção experimental.'));
-  if(lgOn('hail'))S.push(lgSec('GRANIZO','',`<div class="row"><span class="sw ring"></span>Potencial de granizo<small>moderado / alto</small></div>`));
-  if(lgOn('wind'))S.push(lgSec('VENTO (10 m)','km/h',`<div class="bar"></div><div class="ticks"><span>0</span><span>15</span><span>30</span><span>50+</span></div>`,'Setas e partículas seguem para onde o vento sopra.'));
-  if(lgOn('rain'))S.push(lgSec('CHUVA (IMERG)','',lgRow('#7fb2ff','Precipitação observada'),'NASA IMERG, com atraso de algumas horas. As cores seguem a escala do produto.'));
-  if(lgOn('fires'))S.push(lgSec('FOCOS TÉRMICOS','INPE',lgRow('#ff3b1f','< 1 h','muito recente')+lgRow('#ff8a22','1–3 h','recente')+lgRow('#ffbd32','3–6 h','detecção anterior'),'Detecções de anomalia térmica por satélite. As cores indicam recência, não intensidade. Um foco não confirma, isoladamente, um incêndio.'));
-  if(lgOn('lightning'))S.push(lgSec('RAIOS (GLM)','',lgRow('#ffe066','Descarga detectada','últimos 15 min'),'Mais opaco = mais recente.'));
-  if(lgOn('reports'))S.push(lgSec('RELATOS','comunidade',lgRow('#43df86','Ajuda ou serviço disponível')+lgRow('#ffb14a','Necessidade ou serviço faltando')+lgRow('#ff4d4d','Perigo (árvore, poste ou fio)'),'Enviados por usuários, não verificados. Expiram sozinhos (12–48 h).'));
-  if(lgOn('sat'))S.push(lgSec('SATÉLITE','',`<p style="margin:0">GOES-19 GeoColor: cor real de dia e infravermelho à noite.</p>`));
-  if(userPosition)S.push(lgSec('LOCALIZAÇÃO','',lgRow('#4ab8ff','Você está aqui')));
-  document.querySelector('#legendBox').innerHTML=S.join('');
+  const el=document.querySelector('#legend');
+  if(!el)return;
+
+  const on=id=>!!document.querySelector('#'+id)?.checked;
+  const blocks=[];
+
+  // RISCO — mesmas cores usadas atualmente pelo cálculo do MONI.
+  blocks.push(`<div class="legend-card">
+    <div class="legend-title">RISCO NO PONTO <span>clique no mapa</span></div>
+    <div class="legend-row"><i style="--lc:#6f91a4"></i><b>BAIXO</b></div>
+    <div class="legend-row"><i style="--lc:#ffd34d"></i><b>MODERADO</b><small>CAPE ≥ 800</small></div>
+    <div class="legend-row"><i style="--lc:#ff9f43"></i><b>ALTO</b><small>CAPE ≥ 1500 · rajada ≥ 60</small></div>
+    <div class="legend-row"><i style="--lc:#ff4d5e"></i><b>MUITO ALTO</b><small>CAPE ≥ 2500 · rajada ≥ 80</small></div>
+    <p>Ajustado por índice de instabilidade (LI) e inibição (CIN). Vale para a hora da timeline.</p>
+  </div>`);
+
+  if(on('hail')) blocks.push(`<div class="legend-card">
+    <div class="legend-title">GRANIZO <span>estimativa MONI</span></div>
+    <div class="legend-row"><i style="--lc:#9a68ff"></i><b>Potencial de granizo</b><small>moderado / alto</small></div>
+    <p>Estimativa experimental baseada nas condições atmosféricas do ponto.</p>
+  </div>`);
+
+  if(on('imerg')) blocks.push(`<div class="legend-card">
+    <div class="legend-title">PRECIPITAÇÃO (IMERG) <span>NASA</span></div>
+    <div class="legend-row"><i style="--lc:#68a9ff"></i><b>Precipitação estimada</b></div>
+    <p>Produto IMERG com atraso de algumas horas. As cores do mapa seguem a escala do próprio produto.</p>
+  </div>`);
+
+  if(on('lightning')) blocks.push(`<div class="legend-card">
+    <div class="legend-title">RAIOS (GLM) <span>NOAA · GOES</span></div>
+    <div class="legend-row"><i style="--lc:#ffd84f"></i><b>Descarga detectada</b><small>últimos 15 min</small></div>
+    <p>Quanto mais opaco, mais recente.</p>
+  </div>`);
+
+  if(on('fires')) blocks.push(`<div class="legend-card">
+    <div class="legend-title">FOCOS TÉRMICOS <span>INPE</span></div>
+    <div class="legend-row"><i style="--lc:#ff3b1f"></i><b>Muito recente</b><small>&lt; 1 h</small></div>
+    <div class="legend-row"><i style="--lc:#ff8a22"></i><b>Recente</b><small>1–3 h</small></div>
+    <div class="legend-row"><i style="--lc:#ffbd32"></i><b>Últimas 6 h</b><small>3–6 h</small></div>
+    <p>Detecção de anomalia térmica por satélite. A cor indica a idade da detecção, não a intensidade de um incêndio.</p>
+  </div>`);
+
+  // Relatos atuais: legenda por função/categoria, em vez da antiga classificação
+  // genérica verde/laranja/vermelho.
+  blocks.push(`<div class="legend-card legend-reports">
+    <div class="legend-title">RELATOS <span>comunidade</span></div>
+    <div class="legend-row"><i style="--lc:#9a68ff"></i><b>Tempo severo / granizo</b></div>
+    <div class="legend-row"><i style="--lc:#23a9ff"></i><b>Ajuda / recurso disponível</b></div>
+    <div class="legend-row"><i style="--lc:#20e889"></i><b>Serviço disponível</b></div>
+    <div class="legend-row"><i style="--lc:#ffb020"></i><b>Necessidade / atenção</b></div>
+    <div class="legend-row"><i style="--lc:#ff4d5e"></i><b>Falta de serviço / perigo</b></div>
+    <div class="legend-row"><i style="--lc:#ff641f"></i><b>Poste / fio caído</b></div>
+    <p>Relatos enviados por usuários, não verificados. Cada tipo mantém seu ícone próprio no mapa e expira automaticamente.</p>
+  </div>`);
+
+  blocks.push(`<div class="legend-card">
+    <div class="legend-title">LOCALIZAÇÃO</div>
+    <div class="legend-row"><i style="--lc:#4dbdff"></i><b>Você está aqui</b></div>
+  </div>`);
+
+  blocks.push(`<div class="legend-disclaimer">Classificações de risco e estimativas do MONI são experimentais e não substituem alertas oficiais.</div>`);
+
+  el.innerHTML=blocks.join('');
 }
 document.querySelector('aside').addEventListener('change',renderLegend);
 // A localização agora é automática; não existe mais o antigo botão locateBtn.
