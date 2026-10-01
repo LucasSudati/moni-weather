@@ -711,7 +711,38 @@ function renderPoint(){
   const ME=fuseStormEvidence({cell:radarCell,weather:v,lat:pt.lat,lon:pt.lon});
   const stormTxt=moniLevelText(ME.storm.level,'storm'),hailTxt=moniLevelText(ME.hail.level,'hail');
   const srcTxt=x=>x.length?x.map(q=>({radar:'REDEMET',modelo:'MODELO',glm:'GLM',satellite:'GOES',comunidade:'COMUNIDADE'}[q]||q.toUpperCase())).join(' + '):'--';
-  document.querySelector('#point').innerHTML=`${pt.lat.toFixed(3)}, ${pt.lon.toFixed(3)} · ${n===0?'AGORA':n>0?'+'+n+' h':n+' h'}<br><br>TEMP ${val('temperature_2m')??'--'} °C<br>PRECIP ${v.precip} mm/h<br>UMIDADE ${val('relative_humidity_2m')??'--'} %<br>NUVENS ${val('cloud_cover')??'--'} %<br>VENTO ${val('wind_speed_10m')??'--'} km/h<br>RAJADA ${v.gust} km/h<br>CÓDIGO TEMPO ${v.weatherCode||'--'}<br>CAPE ${v.cape} J/kg<br>LI ${v.li??'--'} · ISOTERMA 0° ${v.fz!=null?Math.round(v.fz):'--'} m<br><br>SITUAÇÃO ${L0.t}<br><b>TEMPESTADE ${stormTxt}</b> · CONFIANÇA ${ME.storm.confidenceLabel}<br><small>FONTES ${srcTxt(ME.storm.sources)}</small><br><b>GRANIZO ${hailTxt}</b> · CONFIANÇA ${ME.hail.confidenceLabel}<br><small>FONTES ${srcTxt(ME.hail.sources)}</small><br>RAIOS PRÓXIMOS ${F.bolts.length}<br>RELATOS METEO ${F.reps.length}<br>FOGO (CONDIÇÃO) ${fireWx(Number(val('relative_humidity_2m')),v.gust,v.precip,Number(val('temperature_2m')))}`;
+  document.querySelector('#point').innerHTML=`
+    <div class="moni-point-head">${pt.lat.toFixed(3)}, ${pt.lon.toFixed(3)} · ${n===0?'AGORA':n>0?'+'+n+' h':n+' h'}</div>
+    <div class="moni-point-weather">
+      <div>TEMP <b>${val('temperature_2m')??'--'} °C</b></div>
+      <div>PRECIP <b>${v.precip} mm/h</b></div>
+      <div>UMIDADE <b>${val('relative_humidity_2m')??'--'} %</b></div>
+      <div>NUVENS <b>${val('cloud_cover')??'--'} %</b></div>
+      <div>VENTO <b>${val('wind_speed_10m')??'--'} km/h</b></div>
+      <div>RAJADA <b>${v.gust} km/h</b></div>
+      <div>CAPE <b>${v.cape} J/kg</b></div>
+      <div>LI <b>${v.li??'--'}</b> · ISOTERMA 0° <b>${v.fz!=null?Math.round(v.fz):'--'} m</b></div>
+    </div>
+    <div class="moni-evidence-block">
+      <div class="moni-evidence-title">ANÁLISE MULTIFONTE</div>
+      <div class="moni-evidence-item">
+        <span>TEMPESTADE</span>
+        <b>${stormTxt}</b>
+        <small>CONFIANÇA ${ME.storm.confidenceLabel}</small>
+        <small>${srcTxt(ME.storm.sources)}</small>
+      </div>
+      <div class="moni-evidence-item">
+        <span>GRANIZO</span>
+        <b>${hailTxt}</b>
+        <small>CONFIANÇA ${ME.hail.confidenceLabel}</small>
+        <small>${srcTxt(ME.hail.sources)}</small>
+      </div>
+      <div class="moni-evidence-foot">
+        RAIOS PRÓXIMOS <b>${F.bolts.length}</b><br>
+        RELATOS METEO <b>${F.reps.length}</b><br>
+        FOGO (CONDIÇÃO) <b>${fireWx(Number(val('relative_humidity_2m')),v.gust,v.precip,Number(val('temperature_2m')))}</b>
+      </div>
+    </div>`;
   setRisk(L0,{...v,temp:Number(val('temperature_2m')),rh:Number(val('relative_humidity_2m')),wind:Number(val('wind_speed_10m')),hail:F.hail,evidence:F.evidence});
   weatherLayer.clearLayers();stormLayer.clearLayers();hailLayer.clearLayers();
   L.circleMarker([pt.lat,pt.lon],{radius:5,weight:1,color:'#dce7ef',fillColor:'#37a8ff',fillOpacity:.9}).addTo(weatherLayer);
@@ -1172,9 +1203,29 @@ function evidenceRadar(cell){
 }
 function evidenceModel(v){
   if(!v)return {source:'modelo',available:false,storm:0,hail:0,weight:0,details:[]};
-  const b=riskAt(v),details=[];if(Number.isFinite(Number(v.cape)))details.push(`CAPE ${Math.round(Number(v.cape))} J/kg`);if(Number.isFinite(Number(v.li)))details.push(`LI ${Number(v.li).toFixed(1)}`);if(Number.isFinite(Number(v.fz)))details.push(`0 °C ${Math.round(Number(v.fz))} m`);
-  const hail=b.hail==='ALTO'?3:b.hail==='MODERADO'?2:b.hail==='BAIXO'?1:0;
-  return {source:'modelo',available:true,storm:moniClampLevel(b.l),hail,weight:.75,details};
+  const b=riskAt(v),details=[];
+  const cape=Number(v.cape),li=Number(v.li),fz=Number(v.fz),gust=Number(v.gust);
+  if(Number.isFinite(cape))details.push(`CAPE ${Math.round(cape)} J/kg`);
+  if(Number.isFinite(li))details.push(`LI ${li.toFixed(1)}`);
+  if(Number.isFinite(fz))details.push(`0 °C ${Math.round(fz)} m`);
+
+  // Mantém riskAt() como base e acrescenta uma contribuição independente
+  // para granizo usando CAPE + LI + nível de congelamento + rajada.
+  let hail=b.hail==='ALTO'?3:b.hail==='MODERADO'?2:b.hail==='BAIXO'?1:0;
+  let modelHail=0;
+  if(Number.isFinite(cape)&&Number.isFinite(li)){
+    if(cape>=2500&&li<=-5)modelHail=3;
+    else if(cape>=1500&&li<=-3)modelHail=2;
+    else if(cape>=800&&li<=-3)modelHail=1;
+  }
+  if(modelHail>0&&Number.isFinite(fz)){
+    if(fz>=2500&&fz<=4200)modelHail=Math.min(3,modelHail+1);
+    else if(fz>5200)modelHail=Math.max(0,modelHail-1);
+  }
+  if(modelHail>0&&Number.isFinite(gust)&&gust>=50)modelHail=Math.min(3,modelHail+1);
+  hail=Math.max(hail,modelHail);
+
+  return {source:'modelo',available:true,storm:moniClampLevel(b.l),hail:moniClampLevel(hail),weight:.75,details};
 }
 function evidenceLightning(lat,lon,km=50){
   if(!Number.isFinite(Number(lat))||!Number.isFinite(Number(lon)))return {source:'glm',available:false,storm:0,hail:0,weight:0,details:[]};
