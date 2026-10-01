@@ -704,12 +704,30 @@ function renderPoint(){
   const val=k=>now&&cur[k]!=null?cur[k]:g(k);
   const v={cape:Number(g('cape')||0),gust:Number(val('wind_gusts_10m')||0),precip:Number(val('precipitation')||0),weatherCode:Number(val('weather_code')||0),li:g('lifted_index'),cin:g('convective_inhibition'),fz:g('freezing_level_height')};
   const F=fuseSituation(v,pt.lat,pt.lon),L0=LV[F.level];
-  document.querySelector('#point').innerHTML=`${pt.lat.toFixed(3)}, ${pt.lon.toFixed(3)} · ${n===0?'AGORA':n>0?'+'+n+' h':n+' h'}<br><br>TEMP ${val('temperature_2m')??'--'} °C<br>PRECIP ${v.precip} mm/h<br>UMIDADE ${val('relative_humidity_2m')??'--'} %<br>NUVENS ${val('cloud_cover')??'--'} %<br>VENTO ${val('wind_speed_10m')??'--'} km/h<br>RAJADA ${v.gust} km/h<br>CÓDIGO TEMPO ${v.weatherCode||'--'}<br>CAPE ${v.cape} J/kg<br>LI ${v.li??'--'} · ISOTERMA 0° ${v.fz!=null?Math.round(v.fz):'--'} m<br><br>SITUAÇÃO ${L0.t}<br>GRANIZO ${F.hail}<br>RAIOS PRÓXIMOS ${F.bolts.length}<br>RELATOS METEO ${F.reps.length}<br>FOGO (CONDIÇÃO) ${fireWx(Number(val('relative_humidity_2m')),v.gust,v.precip,Number(val('temperature_2m')))}`;
+  // Fase 2: o ponto selecionado passa a consultar o motor multifuente.
+  // O radar entra somente se houver uma célula MAXCAPPI a até 35 km.
+  // Sem radar, modelo/GLM/relatos continuam podendo produzir indicação.
+  const radarCell=moniNearestRadarCell(pt.lat,pt.lon,35);
+  const ME=fuseStormEvidence({cell:radarCell,weather:v,lat:pt.lat,lon:pt.lon});
+  const stormTxt=moniLevelText(ME.storm.level,'storm'),hailTxt=moniLevelText(ME.hail.level,'hail');
+  const srcTxt=x=>x.length?x.map(q=>({radar:'REDEMET',modelo:'MODELO',glm:'GLM',satellite:'GOES',comunidade:'COMUNIDADE'}[q]||q.toUpperCase())).join(' + '):'--';
+  document.querySelector('#point').innerHTML=`${pt.lat.toFixed(3)}, ${pt.lon.toFixed(3)} · ${n===0?'AGORA':n>0?'+'+n+' h':n+' h'}<br><br>TEMP ${val('temperature_2m')??'--'} °C<br>PRECIP ${v.precip} mm/h<br>UMIDADE ${val('relative_humidity_2m')??'--'} %<br>NUVENS ${val('cloud_cover')??'--'} %<br>VENTO ${val('wind_speed_10m')??'--'} km/h<br>RAJADA ${v.gust} km/h<br>CÓDIGO TEMPO ${v.weatherCode||'--'}<br>CAPE ${v.cape} J/kg<br>LI ${v.li??'--'} · ISOTERMA 0° ${v.fz!=null?Math.round(v.fz):'--'} m<br><br>SITUAÇÃO ${L0.t}<br><b>TEMPESTADE ${stormTxt}</b> · CONFIANÇA ${ME.storm.confidenceLabel}<br><small>FONTES ${srcTxt(ME.storm.sources)}</small><br><b>GRANIZO ${hailTxt}</b> · CONFIANÇA ${ME.hail.confidenceLabel}<br><small>FONTES ${srcTxt(ME.hail.sources)}</small><br>RAIOS PRÓXIMOS ${F.bolts.length}<br>RELATOS METEO ${F.reps.length}<br>FOGO (CONDIÇÃO) ${fireWx(Number(val('relative_humidity_2m')),v.gust,v.precip,Number(val('temperature_2m')))}`;
   setRisk(L0,{...v,temp:Number(val('temperature_2m')),rh:Number(val('relative_humidity_2m')),wind:Number(val('wind_speed_10m')),hail:F.hail,evidence:F.evidence});
   weatherLayer.clearLayers();stormLayer.clearLayers();hailLayer.clearLayers();
   L.circleMarker([pt.lat,pt.lon],{radius:5,weight:1,color:'#dce7ef',fillColor:'#37a8ff',fillOpacity:.9}).addTo(weatherLayer);
-  if(F.level>0)L.circle([pt.lat,pt.lon],{radius:25000,color:L0.c,weight:1,fillColor:L0.c,fillOpacity:.12}).bindTooltip(L0.t).addTo(stormLayer);
-  if(['ALTO','MODERADO','INDICADO','RELATADO'].includes(F.hail))L.circle([pt.lat,pt.lon],{radius:12000,color:'#d35cff',dashArray:'4 4',weight:2,fillOpacity:0}).bindTooltip('Granizo: '+F.hail).addTo(hailLayer);
+  if(ME.storm.level>0){
+    const sc=['#37a8ff','#ffd84d','#ff9a3d','#ff4f57'][ME.storm.level];
+    L.circle([pt.lat,pt.lon],{radius:25000,color:sc,weight:1,fillColor:sc,fillOpacity:.12})
+      .bindTooltip(`${stormTxt} · confiança ${ME.storm.confidenceLabel}`)
+      .bindPopup(`<b>${stormTxt}</b><br>Confiança: <b>${ME.storm.confidenceLabel}</b><br>Fontes: ${srcTxt(ME.storm.sources)}<br><small>Análise experimental multifuente do MONI. Não é alerta oficial.</small>`)
+      .addTo(stormLayer);
+  }
+  if(ME.hail.level>0){
+    L.circle([pt.lat,pt.lon],{radius:12000,color:'#d35cff',dashArray:'4 4',weight:2,fillOpacity:0})
+      .bindTooltip(`Granizo: ${hailTxt} · confiança ${ME.hail.confidenceLabel}`)
+      .bindPopup(`<b>${hailTxt} DE GRANIZO</b><br>Confiança: <b>${ME.hail.confidenceLabel}</b><br>Fontes: ${srcTxt(ME.hail.sources)}<br><small>Potencial experimental. Não significa granizo confirmado no solo.</small>`)
+      .addTo(hailLayer);
+  }
 }
 
 // Avisos oficiais do INMET (experimental: formato/CORS da API não verificados; falha com elegância).
@@ -1177,6 +1195,24 @@ function fuseStormEvidence({cell=null,weather=null,lat=null,lon=null}={}){
   return {version:MONI_EVIDENCE_VERSION,storm:fuse('storm'),hail:fuse('hail'),evidence,missingSources:evidence.filter(e=>!e.available).map(e=>e.source)};
 }
 window.moniEvidenceAt=fuseStormEvidence;
+
+function moniNearestRadarCell(lat,lon,maxKm=35){
+  const cells=Array.isArray(maxcappiData?.cells)?maxcappiData.cells:[];
+  let best=null,bestKm=Infinity;
+  for(const c of cells){
+    const a=Number(c?.lat),o=Number(c?.lon);
+    if(!Number.isFinite(a)||!Number.isFinite(o))continue;
+    const d=kmDist(Number(lat),Number(lon),a,o);
+    if(d<bestKm){best=c;bestKm=d;}
+  }
+  return best&&bestKm<=maxKm?best:null;
+}
+function moniLevelText(n,kind='storm'){
+  n=moniClampLevel(n);
+  if(kind==='hail')return ['SEM INDICAÇÃO','POTENCIAL BAIXO','POTENCIAL MODERADO','POTENCIAL ALTO'][n];
+  return ['SEM INDICAÇÃO','CÉLULA/CONVECÇÃO POSSÍVEL','TEMPESTADE POSSÍVEL','TEMPESTADE FORTE POSSÍVEL'][n];
+}
+
 
 function drawMaxcappiHazards(data){
   autoStormLayer.clearLayers();autoHailLayer.clearLayers();
