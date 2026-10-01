@@ -366,7 +366,16 @@ const RADAR_API=(window.MONI_CONFIG&&window.MONI_CONFIG.radarApiUrl)||((window.M
 function setRadarStatus(t,live=false){const e=document.querySelector('#radarStatus');if(!e)return;e.textContent=t;e.classList.toggle('live',live);}
 function radarDate(ts){if(!ts)return null;const d=new Date(String(ts).replace(' ','T')+'Z');return Number.isNaN(d.getTime())?null:d;}
 function radarStamp(ts){const d=radarDate(ts);return d?d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+'Z':'--';}
-function clearRadarOverlays(){radarOverlays.forEach(x=>map.removeLayer(x));radarOverlays=[];}
+function clearRadarOverlays(){radarOverlays.forEach(x=>map.removeLayer(x));radarOverlays=[];}\nconst radarSeen=new Map();
+function radarAgeMin(ts){const d=radarDate(ts);return d?Math.max(0,Math.round((Date.now()-d.getTime())/60000)):null;}
+function radarProductHealth(im){const age=radarAgeMin(im?.timestamp),size=Number(im?.size);if(age==null)return {key:'unknown',label:'INDETERMINADO',reason:'Horário indisponível'};if(age>30)return {key:'offline',label:'SEM DADOS RECENTES',reason:`Último produto há ${age} min`};if(Number.isFinite(size)&&size>0&&size<1800)return {key:'partial',label:'DADOS PARCIAIS',reason:`Arquivo anormalmente pequeno (${size} bytes)`};return {key:'normal',label:'DADOS DISPONÍVEIS',reason:'Produto recente recebido'};}
+function radarDisplayName(im){return String(im?.radar||im?.area||'Radar').replace(/^Radar\s*-\s*/i,'');}
+function updateRadarSeen(list){for(const im of list){const k=String(im.area||im.radar||im.image);radarSeen.set(k,{...im,_seenAt:Date.now()});}}
+function radarHealthCounts(list){const c={normal:0,partial:0,offline:0,unknown:0};for(const im of list)c[radarProductHealth(im).key]++;return c;}
+function renderRadarHealth(){const list=document.querySelector('#radarHealthList'),sum=document.querySelector('#radarHealthSummary');if(!list||!sum)return;const items=[...radarSeen.values()].sort((x,y)=>radarDisplayName(x).localeCompare(radarDisplayName(y),'pt-BR')),c=radarHealthCounts(items);sum.innerHTML=`<div><b>${items.length}</b><span>OBSERVADOS</span></div><div class="ok"><b>${c.normal}</b><span>DISPONÍVEIS</span></div><div class="warn"><b>${c.partial}</b><span>PARCIAIS</span></div><div class="bad"><b>${c.offline}</b><span>SEM DADOS</span></div>`;list.innerHTML=items.length?items.map(im=>{const st=radarProductHealth(im),age=radarAgeMin(im.timestamp),size=Number(im.size);return `<article class="radar-health-item ${st.key}"><div class="radar-health-state"><i></i><span>${st.label}</span></div><h3>${escFire(radarDisplayName(im))}</h3><div class="radar-health-meta"><span>MAXCAPPI</span><b>${radarStamp(im.timestamp)}</b><span>IDADE</span><b>${age==null?'--':age+' min'}</b><span>ARQUIVO</span><b>${Number.isFinite(size)&&size>0?size.toLocaleString('pt-BR')+' B':'--'}</b></div><p>${escFire(st.reason)}</p></article>`;}).join(''):'<div class="radar-health-empty">Ative a camada de radar para carregar os produtos.</div>';}
+function openRadarHealth(){renderRadarHealth();const m=document.querySelector('#radarHealthModal');m?.classList.add('open');m?.setAttribute('aria-hidden','false');}
+function closeRadarHealth(){const m=document.querySelector('#radarHealthModal');m?.classList.remove('open');m?.setAttribute('aria-hidden','true');}
+
 function drawRadarImages(images,label){
   if(!radarEnabled)return;clearRadarOverlays();const opacity=Number(document.querySelector('#radarOpacity')?.value||58)/100;
   for(const im of images){const b=im.bounds;if(!b||![b.south,b.west,b.north,b.east].every(Number.isFinite)||!im.image)continue;
@@ -387,11 +396,11 @@ async function refreshRadar(){
   if(!radarEnabled)return;const req=++radarReq;setRadarStatus('ATUALIZANDO…');
   try{
     const r=await fetch(`${RADAR_API}?area=all&tipo=maxcappi&anima=5`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(req!==radarReq||!radarEnabled)return;if(!data?.ok)throw new Error(data?.error||'REDEMET sem resposta');
-    const images=Array.isArray(data.images)?data.images:[];radarLatest=latestPerRadar(images);radarFrames=buildRadarFrames(images);
+    const images=Array.isArray(data.images)?data.images:[];radarLatest=latestPerRadar(images);radarFrames=buildRadarFrames(images);updateRadarSeen(radarLatest);renderRadarHealth();
     if(!radarLatest.length){clearRadarOverlays();setRadarStatus('SEM DADOS');document.querySelector('#radarFrame').textContent='--';return;}
-    stopRadarAnimation();drawRadarImages(radarLatest,`${radarLatest.length} RADARES · ATUAL`);
+    stopRadarAnimation();const hc=radarHealthCounts(radarLatest);drawRadarImages(radarLatest,`${radarLatest.length} RADARES · ${hc.normal} OK · ${hc.partial} PARCIAL`);
     const times=radarLatest.map(x=>radarDate(x.timestamp)?.getTime()).filter(Number.isFinite),newest=times.length?Math.max(...times):0,age=newest?Math.max(0,Math.round((Date.now()-newest)/60000)):null;
-    setRadarStatus(`${radarLatest.length} RADARES · ${age??'--'} MIN`,true);
+    setRadarStatus(`${radarLatest.length} · ${hc.normal} OK · ${hc.partial} PARCIAL`,true);
   }catch(err){console.warn('Radar REDEMET',err);clearRadarOverlays();setRadarStatus('INDISPONÍVEL');document.querySelector('#radarFrame').textContent='--';}
 }
 function stopRadarAnimation(){clearInterval(radarAnimTimer);radarAnimTimer=null;radarPlaying=false;const b=document.querySelector('#radarPlay');if(b)b.textContent='▶ ANIMAR RADAR';}
@@ -402,6 +411,7 @@ function toggleRadarAnimation(){
 function setRadar(on){radarEnabled=on;document.querySelector('#radarControls').classList.toggle('visible',on);if(on){refreshRadar();clearInterval(radarTimer);radarTimer=setInterval(refreshRadar,120000);}else{radarReq++;clearInterval(radarTimer);radarTimer=null;stopRadarAnimation();clearRadarOverlays();radarFrames=[];radarLatest=[];setRadarStatus('OFF');document.querySelector('#radarFrame').textContent='--';}}
 document.querySelector('#radar').onchange=e=>setRadar(e.target.checked);
 document.querySelector('#radarPlay').onclick=toggleRadarAnimation;
+document.querySelector('#radarHealthBtn')?.addEventListener('click',openRadarHealth);document.querySelectorAll('[data-radar-close]').forEach(x=>x.addEventListener('click',closeRadarHealth));document.addEventListener('keydown',e=>{if(e.key==='Escape')closeRadarHealth();});
 document.querySelector('#radarOpacity').oninput=e=>{document.querySelector('#radarOpacityValue').textContent=e.target.value+'%';radarOverlays.forEach(x=>x.setOpacity(Number(e.target.value)/100));};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&radarEnabled)refreshRadar();});
 

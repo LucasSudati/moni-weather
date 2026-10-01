@@ -43,6 +43,7 @@
         <div class="sat-row"><span>OPACIDADE</span><span id="radarOpacityValue">58%</span></div>
         <input id="radarOpacity" type="range" min="15" max="90" value="58" />
         <button id="radarPlay" class="radar-play" type="button">▶ ANIMAR RADAR</button>
+        <button id="radarHealthBtn" class="radar-health-btn" type="button">● STATUS DOS RADARES</button>
       </div>
       <label><input type="checkbox" id="rain" checked> Precipitação HD <span class="tag-live">RADAR + IMERG</span></label>
       <label><input type="checkbox" id="wind"> Vento</label>
@@ -209,5 +210,5 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
-</body>
+<div id="radarHealthModal" class="radar-health-modal" aria-hidden="true"><div class="radar-health-backdrop" data-radar-close></div><section class="radar-health-panel" role="dialog" aria-modal="true"><header><div><span class="radar-health-kicker">REDEMET · DECEA</span><h2>Status dos produtos de radar</h2></div><button type="button" class="radar-health-close" data-radar-close>×</button></header><div id="radarHealthSummary" class="radar-health-summary"></div><div class="radar-health-note">O MONI avalia o produto MAXCAPPI recebido. Um produto parcial não confirma falha física do radar.</div><div id="radarHealthList" class="radar-health-list"></div></section></div></body>
 </html>
