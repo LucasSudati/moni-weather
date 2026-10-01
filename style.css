@@ -412,3 +412,55 @@ header b,.status,.status span{white-space:nowrap}
 #riskBar .riskbar-metric img{width:22px;height:22px;object-fit:contain;flex:none}
 #riskBar .riskbar-metric small{color:#81929e;font-size:8px;font-weight:500;margin-left:1px}
 @media(max-width:760px){#riskBar{align-items:flex-start;flex-wrap:wrap;gap:6px 8px}#riskBar .riskbar-main-icon{width:32px;height:32px}#riskBar .riskbar-copy{flex:1;min-width:calc(100% - 42px);display:block;white-space:normal}#riskBar .riskbar-copy b{display:block}#riskBar .riskbar-copy span{display:block;margin-top:1px;font-size:10px}#riskBar .riskbar-weather{width:100%;margin-left:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}#riskBar .riskbar-metric{min-width:0;padding:3px 6px}#riskBar .riskbar-metric img{width:20px;height:20px}}
+
+
+/* MONI — métricas integradas diretamente à barra de risco */
+#riskBar .riskbar-weather{
+  gap:14px;
+}
+#riskBar .riskbar-metric{
+  min-height:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+#riskBar .riskbar-metric + .riskbar-metric{
+  position:relative;
+}
+#riskBar .riskbar-metric + .riskbar-metric::before{
+  content:"";
+  width:1px;
+  height:18px;
+  margin-right:9px;
+  background:rgba(255,255,255,.10);
+}
+@media(max-width:760px){
+  #riskBar .riskbar-weather{
+    gap:7px 12px;
+  }
+  #riskBar .riskbar-metric + .riskbar-metric::before{
+    display:none;
+  }
+}
+
+#riskBar .riskbar-metric{appearance:none;-webkit-appearance:none;font:600 10px/1.15 Consolas,monospace;color:inherit;cursor:pointer;text-align:left}
+#riskBar .riskbar-metric:hover{opacity:.78}
+#riskBar .riskbar-metric:focus-visible{outline:1px solid #59c7ff;outline-offset:4px}
+.risk-metric-popover{position:fixed;z-index:10050;left:50%;bottom:72px;width:min(390px,calc(100vw - 28px));transform:translate(-50%,10px);opacity:0;border:1px solid #314654;border-radius:12px;background:#0b151d;color:#dce8ef;box-shadow:0 16px 50px rgba(0,0,0,.48);transition:.14s ease;overflow:hidden}
+.risk-metric-popover.on{opacity:1;transform:translate(-50%,0)}
+.risk-metric-popover-head{display:flex;align-items:center;gap:10px;padding:12px 13px;border-bottom:1px solid rgba(255,255,255,.08)}
+.risk-metric-popover-head img{width:34px;height:34px;object-fit:contain}
+.risk-metric-popover-head>div{display:flex;flex-direction:column;gap:2px;flex:1}
+.risk-metric-popover-head b{font-size:12px;color:#91a6b4;text-transform:uppercase;letter-spacing:.06em}
+.risk-metric-popover-head strong{font-size:18px;color:#f0f7fb}
+.risk-metric-popover-head strong small{font-size:10px;color:#91a2ae;font-weight:500}
+.risk-metric-popover-head button{border:0;background:transparent;color:#91a6b4;font-size:23px;cursor:pointer;padding:2px 5px}
+.risk-metric-popover-body{padding:12px 13px;font-size:11px;line-height:1.5}
+.risk-metric-popover-body>div{display:flex;gap:9px;align-items:center;margin-bottom:5px}
+.risk-metric-popover-body>div span{width:48px;color:#6f8796;font:700 9px Consolas,monospace}
+.risk-metric-popover-body code{font-size:10px;background:#111f29;padding:2px 5px;border-radius:4px}
+.risk-metric-popover-body p{margin:10px 0 0;color:#a9bac5}
+.risk-metric-popover-body .risk-metric-limit{padding-top:9px;border-top:1px solid rgba(255,255,255,.07);color:#8196a4}
+@media(max-width:760px){.risk-metric-popover{bottom:18px}}

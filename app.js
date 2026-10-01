@@ -644,6 +644,22 @@ function fuseSituation(v,lat,lon){
   for(const r of reps){const t=rType(r.k); if(r.k==='hail_now'){level=Math.max(level,3);hail='RELATADO';}else level=Math.max(level,2);evidence.push({kind:r.k==='hail_now'?'hail':r.k==='storm_now'?'storm':'rain',level:r.k==='hail_now'?3:2,title:t.t+' relatado',text:`Relato da comunidade ${ago(r.ts)} a ~${Math.round(kmDist(lat,lon,r.lat,r.lon))} km.`,source:'comunidade'});}
   return {level:Math.min(3,level),hail,evidence,bolts,reps};
 }
+const RISK_METRIC_INFO={
+  temp:{title:'Temperatura',icon:'./assets/meteocons/thermometer.svg',source:'Open-Meteo',field:'temperature_2m',treatment:'No horário atual, o MONI usa o valor current para o ponto selecionado. Ao mover a linha do tempo, usa a série horária.',note:'É um dado meteorológico de grade/modelo para as coordenadas selecionadas; não é uma medição de um termômetro instalado exatamente no ponto.'},
+  rh:{title:'Umidade relativa',icon:'./assets/meteocons/humidity.svg',source:'Open-Meteo',field:'relative_humidity_2m',treatment:'O MONI usa current no horário atual e a série hourly nos demais horários da linha do tempo.',note:'Representa a umidade relativa estimada para a grade meteorológica correspondente ao ponto.'},
+  precip:{title:'Precipitação',icon:'./assets/meteocons/raindrop.svg',source:'Open-Meteo',field:'precipitation',treatment:'Exibida em mm/h. O valor também entra na avaliação experimental de chuva e risco do MONI.',note:'É uma estimativa para o ponto/grade selecionado e pode diferir da chuva observada localmente.'},
+  wind:{title:'Vento',icon:'./assets/meteocons/wind.svg',source:'Open-Meteo',field:'wind_speed_10m + wind_gusts_10m',treatment:'Velocidade do vento a 10 m em km/h. A rajada aparece junto quando supera o vento sustentado em mais de 5 km/h.',note:'Os valores são estimados para a grade meteorológica do ponto selecionado.'}
+};
+function closeRiskMetricInfo(){document.querySelector('#riskMetricInfo')?.remove();}
+function openRiskMetricInfo(key,value,extra=''){
+  const info=RISK_METRIC_INFO[key];if(!info)return;
+  closeRiskMetricInfo();
+  const el=document.createElement('div');el.id='riskMetricInfo';el.className='risk-metric-popover';
+  el.innerHTML=`<div class="risk-metric-popover-head"><img src="${info.icon}" alt=""><div><b>${info.title}</b><strong>${value}${extra?` <small>${extra}</small>`:''}</strong></div><button type="button" aria-label="Fechar">×</button></div><div class="risk-metric-popover-body"><div><span>FONTE</span><b>${info.source}</b></div><div><span>DADO</span><code>${info.field}</code></div><p>${info.treatment}</p><p class="risk-metric-limit"><b>Limitação:</b> ${info.note}</p></div>`;
+  document.body.appendChild(el);el.querySelector('button').onclick=closeRiskMetricInfo;requestAnimationFrame(()=>el.classList.add('on'));
+}
+document.addEventListener('click',e=>{const metric=e.target.closest?.('.riskbar-metric[data-metric]');if(metric){e.stopPropagation();openRiskMetricInfo(metric.dataset.metric,metric.dataset.value,metric.dataset.extra||'');return;}if(!e.target.closest?.('#riskMetricInfo'))closeRiskMetricInfo();});
+
 function setRisk(L0,details={}){
   const b=document.querySelector('#civilRisk'),txt=document.querySelector('#civilRiskText'),card=document.querySelector('#civilRiskCard'),icon=document.querySelector('#civilRiskIcon');
   const idx=Math.max(0,LV.indexOf(L0));b.textContent='RISCO '+L0.t;b.style.color=L0.c;txt.textContent=L0.m+' Não substitui alertas oficiais.';card.dataset.level=String(idx);icon.src=meteoIcon(RISK_ICONS[idx]);
@@ -662,10 +678,10 @@ function setRisk(L0,details={}){
     <img class="riskbar-main-icon" src="${icon.src}" alt="">
     <div class="riskbar-copy"><b>RISCO ${L0.t}</b><span>${L0.m}</span></div>
     <div class="riskbar-weather" aria-label="Condições meteorológicas no ponto selecionado">
-      <div class="riskbar-metric" title="Temperatura"><img src="./assets/meteocons/thermometer.svg" alt=""><span>${temp} °C</span></div>
-      <div class="riskbar-metric" title="Umidade relativa"><img src="./assets/meteocons/humidity.svg" alt=""><span>${rh}%</span></div>
-      <div class="riskbar-metric" title="Precipitação"><img src="./assets/meteocons/raindrop.svg" alt=""><span>${precip} mm/h</span></div>
-      <div class="riskbar-metric" title="Vento"><img src="./assets/meteocons/wind.svg" alt=""><span>${wind} km/h</span>${gustExtra}</div>
+      <button type="button" class="riskbar-metric" data-metric="temp" data-value="${temp} °C" title="Temperatura — clique para detalhes"><img src="./assets/meteocons/thermometer.svg" alt=""><span>${temp} °C</span></button>
+      <button type="button" class="riskbar-metric" data-metric="rh" data-value="${rh}%" title="Umidade relativa — clique para detalhes"><img src="./assets/meteocons/humidity.svg" alt=""><span>${rh}%</span></button>
+      <button type="button" class="riskbar-metric" data-metric="precip" data-value="${precip} mm/h" title="Precipitação — clique para detalhes"><img src="./assets/meteocons/raindrop.svg" alt=""><span>${precip} mm/h</span></button>
+      <button type="button" class="riskbar-metric" data-metric="wind" data-value="${wind} km/h" data-extra="${Number.isFinite(Number(details.gust))?`raj. ${gust} km/h`:''}" title="Vento — clique para detalhes"><img src="./assets/meteocons/wind.svg" alt=""><span>${wind} km/h</span>${gustExtra}</button>
     </div>`;
   bar.style.borderColor=bar.style.color=L0.c;
   bar.classList.add('on');
