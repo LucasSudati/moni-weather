@@ -367,6 +367,34 @@ function setRadarStatus(t,live=false){const e=document.querySelector('#radarStat
 function radarDate(ts){if(!ts)return null;const d=new Date(String(ts).replace(' ','T')+'Z');return Number.isNaN(d.getTime())?null:d;}
 function radarStamp(ts){const d=radarDate(ts);return d?d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+'Z':'--';}
 function clearRadarOverlays(){radarOverlays.forEach(x=>map.removeLayer(x));radarOverlays=[];}
+function radarBounds(im){
+  const b=im?.bounds;
+  if(!b)return null;
+  const south=Number(b.south),west=Number(b.west),north=Number(b.north),east=Number(b.east);
+  if(![south,west,north,east].every(Number.isFinite))return null;
+  return [[south,west],[north,east]];
+}
+function drawRadarImages(images,label='--'){
+  clearRadarOverlays();
+  if(!radarEnabled)return;
+  const opacity=Number(document.querySelector('#radarOpacity')?.value||58)/100;
+  for(const im of images||[]){
+    if(!im?.image)continue;
+    const bounds=radarBounds(im);
+    if(!bounds)continue;
+    const ov=L.imageOverlay(im.image,bounds,{
+      opacity,
+      pane:'radarPane',
+      interactive:false,
+      crossOrigin:true,
+      attribution:'REDEMET / DECEA MAXCAPPI'
+    });
+    ov.addTo(map);
+    radarOverlays.push(ov);
+  }
+  const frame=document.querySelector('#radarFrame');
+  if(frame)frame.textContent=label;
+}
 
 let radarNetworkPayload=null;
 const RADAR_CENTERS={al:[-16.201531,-40.674153],be:[-1.406667,-48.461389],bv:[2.844166667,-60.700277778],cn:[-31.404,-52.701644],cz:[-7.595833,-72.767778],ga:[-15.97643,-48.016142],jr:[-20.27855,-54.47396],mn:[-3.149216,-59.991881],mo:[-9.55129,-35.77068],nt:[-5.90448,-35.25401],pc:[-22.464278,-43.297476],pl:[-9.367,-40.573],pv:[-8.715,-63.893889],sg:[-29.225213,-54.930257],sl:[-2.597222,-44.2375],sn:[-2.429722,-54.798889],sr:[-23.601915,-47.094063],st:[-19.98887,-40.5794],ua:[-0.143611,-67.056944],mi:[-28.128373,-49.471816],tt:[-4.248333,-69.935],vh:[-12.6973,-60.1037],rb:[-9.86163,-67.8961]};
