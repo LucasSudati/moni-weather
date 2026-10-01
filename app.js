@@ -592,29 +592,16 @@ const notifyBtn=document.querySelector('#notifyBtn');if(notifyBtn){notifyBtn.onc
 function fetchT(u,ms=10000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(u,{signal:c.signal}).finally(()=>clearTimeout(t));}
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-// Precipitação V3: IMERG dá cobertura ampla; MAXCAPPI adiciona detalhe de radar onde existe cobertura.
-// Não há interpolação artificial: preservamos a resolução nativa das imagens REDEMET.
+// Precipitação: somente NASA IMERG.
+// Os produtos REDEMET / DECEA MAXCAPPI pertencem exclusivamente à opção "Radar meteorológico".
 map.createPane('rainPane');map.getPane('rainPane').style.zIndex=240;map.getPane('rainPane').style.pointerEvents='none';
-map.createPane('precipHdPane');map.getPane('precipHdPane').style.zIndex=245;map.getPane('precipHdPane').style.pointerEvents='none';
-const rainLayer=L.tileLayer.wms(GIBS_WMS,{layers:'IMERG_Precipitation_Rate',format:'image/png',transparent:true,opacity:.28,pane:'rainPane',attribution:'NASA GIBS / IMERG'}).addTo(map);
-const precipHdLayer=L.layerGroup().addTo(map);
-let precipHdTimer=null,precipHdReq=0;
-function clearPrecipHd(){precipHdLayer.clearLayers();}
-async function refreshPrecipHd(){
-  if(!document.querySelector('#rain')?.checked)return;const req=++precipHdReq;
-  try{
-    const r=await fetch(`${RADAR_API}?area=all&tipo=maxcappi&anima=1`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);
-    const d=await r.json();if(req!==precipHdReq||!document.querySelector('#rain')?.checked)return;
-    const imgs=latestPerRadar(Array.isArray(d?.images)?d.images:[]);clearPrecipHd();
-    for(const im of imgs){const b=im?.bounds;if(!im?.image||!b)continue;L.imageOverlay(im.image,[[b.south,b.west],[b.north,b.east]],{opacity:.76,pane:'precipHdPane',interactive:false,attribution:'REDEMET / DECEA MAXCAPPI'}).addTo(precipHdLayer);}
-  }catch(e){console.warn('Precipitação HD REDEMET',e);}
-}
+const rainLayer=L.tileLayer.wms(GIBS_WMS,{layers:'IMERG_Precipitation_Rate',format:'image/png',transparent:true,opacity:.28,pane:'rainPane',attribution:'NASA GIBS / IMERG'});
 function setPrecipitation(on){
-  if(on){map.addLayer(rainLayer);map.addLayer(precipHdLayer);refreshPrecipHd();clearInterval(precipHdTimer);precipHdTimer=setInterval(refreshPrecipHd,120000);}
-  else{precipHdReq++;clearInterval(precipHdTimer);precipHdTimer=null;map.removeLayer(rainLayer);map.removeLayer(precipHdLayer);clearPrecipHd();}
+  if(on)map.addLayer(rainLayer);
+  else map.removeLayer(rainLayer);
 }
-// A opção inicia ligada no HTML.
-refreshPrecipHd();precipHdTimer=setInterval(refreshPrecipHd,120000);
+// A opção inicia desligada e carrega apenas a precipitação IMERG após ativação manual.
+setPrecipitation(document.querySelector('#rain')?.checked===true);
 
 // Escala única de risco (heurística experimental, não é alerta oficial).
 const LV=[
