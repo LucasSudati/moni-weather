@@ -367,17 +367,13 @@ function setRadarStatus(t,live=false){const e=document.querySelector('#radarStat
 function radarDate(ts){if(!ts)return null;const d=new Date(String(ts).replace(' ','T')+'Z');return Number.isNaN(d.getTime())?null:d;}
 function radarStamp(ts){const d=radarDate(ts);return d?d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+'Z':'--';}
 function clearRadarOverlays(){radarOverlays.forEach(x=>map.removeLayer(x));radarOverlays=[];}
-
-let radarNetworkPayload=null;
-const RADAR_CENTERS={al:[-16.201531,-40.674153],be:[-1.406667,-48.461389],bv:[2.844166667,-60.700277778],cn:[-31.404,-52.701644],cz:[-7.595833,-72.767778],ga:[-15.97643,-48.016142],jr:[-20.27855,-54.47396],mn:[-3.149216,-59.991881],mo:[-9.55129,-35.77068],nt:[-5.90448,-35.25401],pc:[-22.464278,-43.297476],pl:[-9.367,-40.573],pv:[-8.715,-63.893889],sg:[-29.225213,-54.930257],sl:[-2.597222,-44.2375],sn:[-2.429722,-54.798889],sr:[-23.601915,-47.094063],st:[-19.98887,-40.5794],ua:[-0.143611,-67.056944],mi:[-28.128373,-49.471816],tt:[-4.248333,-69.935],vh:[-12.6973,-60.1037],rb:[-9.86163,-67.8961]};
-map.createPane('radarStationPane');map.getPane('radarStationPane').style.zIndex=485;
-const radarStationLayer=L.layerGroup();
-function radarProductAge(im){const d=radarDate(im?.timestamp);return d?Math.max(0,Math.round((Date.now()-d.getTime())/60000)):null;}
-function radarProductName(im){return String(im?.radar||im?.area||'Radar').replace(/^Radar\s*-\s*/i,'');}
-function radarProductState(im){const age=radarProductAge(im),size=Number(im?.size);if(age===null)return{key:'unknown',label:'INDETERMINADO',color:'#8c9aa1',detail:'Horário do produto indisponível'};if(age>30)return{key:'offline',label:'SEM DADOS RECENTES',color:'#ff5362',detail:`Último produto há ${age} min`};if(Number.isFinite(size)&&size>0&&size<1800)return{key:'partial',label:'DADOS PARCIAIS',color:'#ffc13d',detail:`Produto anormalmente pequeno · ${size.toLocaleString('pt-BR')} B`};return{key:'normal',label:'DADOS DISPONÍVEIS',color:'#35df89',detail:'Produto recente recebido'};}
-function radarHealthCounts(images){const c={normal:0,partial:0,offline:0,unknown:0};for(const im of images||[])c[radarProductState(im).key]++;return c;}
-function radarStationPopup(im){const st=radarProductState(im),age=radarProductAge(im),size=Number(im?.size);return `<div class="moni-radar-popup"><div class="moni-radar-popup-status"><i style="background:${st.color}"></i><b>${st.label}</b></div><h3>${radarProductName(im)}</h3><div class="moni-radar-popup-grid"><span>Produto</span><b>MAXCAPPI</b><span>Código</span><b>${String(im?.area||'--').toUpperCase()}</b><span>Atualização</span><b>${radarStamp(im?.timestamp)}</b><span>Idade</span><b>${age===null?'--':age+' min'}</b><span>Tamanho</span><b>${Number.isFinite(size)&&size>0?size.toLocaleString('pt-BR')+' B':'--'}</b></div><p>${st.detail}</p><small>Fonte: REDEMET / DECEA<br>O status descreve o produto recebido pelo MONI, não a condição operacional do equipamento físico.</small></div>`;}
-function renderRadarStations(){radarStationLayer.clearLayers();if(!document.querySelector('#radar')?.checked)return;for(const im of radarLatest||[]){const code=String(im?.area||'').toLowerCase();const hc=im?.center&&Number.isFinite(Number(im.center.lat))&&Number.isFinite(Number(im.center.lon));const center=hc?[Number(im.center.lat),Number(im.center.lon)]:RADAR_CENTERS[code];if(!center)continue;const st=radarProductState(im);L.circleMarker(center,{pane:'radarStationPane',radius:7,color:'#071015',weight:2,fillColor:st.color,fillOpacity:.96}).bindPopup(()=>radarStationPopup(im),{maxWidth:310}).bindTooltip(radarProductName(im),{direction:'top',offset:[0,-7],opacity:.9}).addTo(radarStationLayer);}}
+function drawRadarImages(images,label){
+  if(!radarEnabled)return;clearRadarOverlays();const opacity=Number(document.querySelector('#radarOpacity')?.value||58)/100;
+  for(const im of images){const b=im.bounds;if(!b||![b.south,b.west,b.north,b.east].every(Number.isFinite)||!im.image)continue;
+    const ov=L.imageOverlay(im.image,[[b.south,b.west],[b.north,b.east]],{opacity,pane:'radarPane',interactive:false,attribution:'REDEMET / DECEA'}).addTo(map);radarOverlays.push(ov);
+  }
+  document.querySelector('#radarFrame').textContent=label||`${images.length} RADARES`;
+}
 function latestPerRadar(all){
   const by=new Map();for(const im of all){if(!im?.image)continue;const k=String(im.area||im.radar||im.image),t=radarDate(im.timestamp)?.getTime()||0,old=by.get(k),ot=old?(radarDate(old.timestamp)?.getTime()||0):-1;if(!old||t>ot)by.set(k,im);}return [...by.values()];
 }
@@ -391,13 +387,11 @@ async function refreshRadar(){
   if(!radarEnabled)return;const req=++radarReq;setRadarStatus('ATUALIZANDO…');
   try{
     const r=await fetch(`${RADAR_API}?area=all&tipo=maxcappi&anima=5`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(req!==radarReq||!radarEnabled)return;if(!data?.ok)throw new Error(data?.error||'REDEMET sem resposta');
-    const images=Array.isArray(data.images)?data.images:[];radarNetworkPayload=data;radarLatest=latestPerRadar(images);radarFrames=buildRadarFrames(images);renderRadarStations();
+    const images=Array.isArray(data.images)?data.images:[];radarLatest=latestPerRadar(images);radarFrames=buildRadarFrames(images);
     if(!radarLatest.length){clearRadarOverlays();setRadarStatus('SEM DADOS');document.querySelector('#radarFrame').textContent='--';return;}
-    stopRadarAnimation();
-    const health=radarHealthCounts(radarLatest);
-    drawRadarImages(radarLatest,`${radarLatest.length} RADARES · ${health.normal} OK · ${health.partial} PARCIAL`);
+    stopRadarAnimation();drawRadarImages(radarLatest,`${radarLatest.length} RADARES · ATUAL`);
     const times=radarLatest.map(x=>radarDate(x.timestamp)?.getTime()).filter(Number.isFinite),newest=times.length?Math.max(...times):0,age=newest?Math.max(0,Math.round((Date.now()-newest)/60000)):null;
-    setRadarStatus(`${health.normal} OK · ${health.partial} PARCIAL · ${age??'--'} MIN`,true);
+    setRadarStatus(`${radarLatest.length} RADARES · ${age??'--'} MIN`,true);
   }catch(err){console.warn('Radar REDEMET',err);clearRadarOverlays();setRadarStatus('INDISPONÍVEL');document.querySelector('#radarFrame').textContent='--';}
 }
 function stopRadarAnimation(){clearInterval(radarAnimTimer);radarAnimTimer=null;radarPlaying=false;const b=document.querySelector('#radarPlay');if(b)b.textContent='▶ ANIMAR RADAR';}
@@ -405,7 +399,7 @@ function toggleRadarAnimation(){
   if(radarPlaying){stopRadarAnimation();drawRadarImages(radarLatest,`${radarLatest.length} RADARES · ATUAL`);return;}if(radarFrames.length<2)return;
   radarPlaying=true;document.querySelector('#radarPlay').textContent='■ PARAR ANIMAÇÃO';radarFrameIndex=0;showRadarFrame(0);radarAnimTimer=setInterval(()=>showRadarFrame((radarFrameIndex+1)%radarFrames.length),1100);
 }
-function setRadar(on){radarEnabled=on;document.querySelector('#radarControls').classList.toggle('visible',on);if(on){radarStationLayer.addTo(map);refreshRadar();clearInterval(radarTimer);radarTimer=setInterval(refreshRadar,120000);}else{map.removeLayer(radarStationLayer);radarStationLayer.clearLayers();radarReq++;clearInterval(radarTimer);radarTimer=null;stopRadarAnimation();clearRadarOverlays();radarFrames=[];radarLatest=[];setRadarStatus('OFF');document.querySelector('#radarFrame').textContent='--';}}
+function setRadar(on){radarEnabled=on;document.querySelector('#radarControls').classList.toggle('visible',on);if(on){refreshRadar();clearInterval(radarTimer);radarTimer=setInterval(refreshRadar,120000);}else{radarReq++;clearInterval(radarTimer);radarTimer=null;stopRadarAnimation();clearRadarOverlays();radarFrames=[];radarLatest=[];setRadarStatus('OFF');document.querySelector('#radarFrame').textContent='--';}}
 document.querySelector('#radar').onchange=e=>setRadar(e.target.checked);
 document.querySelector('#radarPlay').onclick=toggleRadarAnimation;
 document.querySelector('#radarOpacity').oninput=e=>{document.querySelector('#radarOpacityValue').textContent=e.target.value+'%';radarOverlays.forEach(x=>x.setOpacity(Number(e.target.value)/100));};

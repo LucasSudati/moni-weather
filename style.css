@@ -528,7 +528,3 @@ header b,.status,.status span{white-space:nowrap}
   width:10px;
   height:10px;
 }
-
-
-
-.moni-radar-popup{min-width:220px;color:#d8e7ee}.moni-radar-popup-status{display:flex;align-items:center;gap:7px;margin-bottom:6px;font-size:10px;letter-spacing:.04em}.moni-radar-popup-status i{width:9px;height:9px;border-radius:50%}.moni-radar-popup h3{margin:4px 0 10px;font-size:15px;color:#eef8fc}.moni-radar-popup-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:10px}.moni-radar-popup-grid span{color:#79919d}.moni-radar-popup-grid b{text-align:right;font-weight:600;color:#c9dce5}.moni-radar-popup p{margin:9px 0 7px;padding:7px 0;border-top:1px solid #29404a;border-bottom:1px solid #29404a;color:#9bb0ba;font-size:10px}.moni-radar-popup small{display:block;color:#718894;font-size:9px;line-height:1.4}
