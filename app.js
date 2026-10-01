@@ -369,93 +369,15 @@ function radarStamp(ts){const d=radarDate(ts);return d?d.toLocaleTimeString('pt-
 function clearRadarOverlays(){radarOverlays.forEach(x=>map.removeLayer(x));radarOverlays=[];}
 
 let radarNetworkPayload=null;
-
-function radarProductState(im){
-  const age=(()=>{const d=radarDate(im?.timestamp);return d?Math.max(0,Math.round((Date.now()-d.getTime())/60000)):null;})();
-  const size=Number(im?.size);
-
-  if(age===null) return {key:'unknown',label:'INDETERMINADO',detail:'Horário do produto indisponível'};
-  if(age>30) return {key:'offline',label:'SEM DADOS RECENTES',detail:`Última imagem há ${age} min`};
-
-  // Heurística conservadora. Arquivos muito pequenos, como os produtos de ~700 B
-  // observados durante a falha parcial da REDEMET, são tratados como produto parcial.
-  // Isto NÃO diagnostica o equipamento físico.
-  if(Number.isFinite(size) && size>0 && size<1800)
-    return {key:'partial',label:'DADOS PARCIAIS',detail:`Produto anormalmente pequeno · ${size.toLocaleString('pt-BR')} B`};
-
-  return {key:'normal',label:'DADOS DISPONÍVEIS',detail:'Produto recente recebido'};
-}
-
-function radarProductAge(im){
-  const d=radarDate(im?.timestamp);
-  return d?Math.max(0,Math.round((Date.now()-d.getTime())/60000)):null;
-}
-
-function radarProductName(im){
-  return String(im?.radar||im?.area||'Radar').replace(/^Radar\s*-\s*/i,'');
-}
-
-function radarHealthCounts(images){
-  const c={normal:0,partial:0,offline:0,unknown:0};
-  for(const im of images||[]) c[radarProductState(im).key]++;
-  return c;
-}
-
-function renderRadarNetworkStatus(){
-  const list=document.querySelector('#radarStatusList');
-  const summary=document.querySelector('#radarStatusSummary');
-  if(!list||!summary)return;
-
-  const images=radarLatest||[];
-  const c=radarHealthCounts(images);
-
-  summary.innerHTML=`
-    <div><b>${images.length}</b><span>COM PRODUTO</span></div>
-    <div class="good"><b>${c.normal}</b><span>DISPONÍVEIS</span></div>
-    <div class="partial"><b>${c.partial}</b><span>PARCIAIS</span></div>
-    <div class="bad"><b>${c.offline}</b><span>SEM DADOS RECENTES</span></div>`;
-
-  if(!images.length){
-    list.innerHTML='<div class="radar-status-empty">Ative a camada Radar meteorológico para carregar os produtos da REDEMET.</div>';
-    return;
-  }
-
-  const sorted=[...images].sort((x,y)=>radarProductName(x).localeCompare(radarProductName(y),'pt-BR'));
-  list.innerHTML=sorted.map(im=>{
-    const st=radarProductState(im);
-    const age=radarProductAge(im);
-    const size=Number(im?.size);
-    return `<article class="radar-status-card ${st.key}">
-      <div class="radar-status-line"><i></i><strong>${st.label}</strong></div>
-      <h3>${radarProductName(im)}</h3>
-      <div class="radar-status-grid">
-        <span>CÓDIGO</span><b>${String(im?.area||'--').toUpperCase()}</b>
-        <span>ATUALIZAÇÃO</span><b>${radarStamp(im?.timestamp)}</b>
-        <span>IDADE</span><b>${age===null?'--':age+' min'}</b>
-        <span>TAMANHO</span><b>${Number.isFinite(size)&&size>0?size.toLocaleString('pt-BR')+' B':'--'}</b>
-      </div>
-      <p>${st.detail}</p>
-    </article>`;
-  }).join('');
-}
-
-function openRadarNetworkStatus(){
-  renderRadarNetworkStatus();
-  const el=document.querySelector('#radarStatusModal');
-  if(el){el.classList.add('open');el.setAttribute('aria-hidden','false');}
-}
-function closeRadarNetworkStatus(){
-  const el=document.querySelector('#radarStatusModal');
-  if(el){el.classList.remove('open');el.setAttribute('aria-hidden','true');}
-}
-
-function drawRadarImages(images,label){
-  if(!radarEnabled)return;clearRadarOverlays();const opacity=Number(document.querySelector('#radarOpacity')?.value||58)/100;
-  for(const im of images){const b=im.bounds;if(!b||![b.south,b.west,b.north,b.east].every(Number.isFinite)||!im.image)continue;
-    const ov=L.imageOverlay(im.image,[[b.south,b.west],[b.north,b.east]],{opacity,pane:'radarPane',interactive:false,attribution:'REDEMET / DECEA'}).addTo(map);radarOverlays.push(ov);
-  }
-  document.querySelector('#radarFrame').textContent=label||`${images.length} RADARES`;
-}
+const RADAR_CENTERS={al:[-16.201531,-40.674153],be:[-1.406667,-48.461389],bv:[2.844166667,-60.700277778],cn:[-31.404,-52.701644],cz:[-7.595833,-72.767778],ga:[-15.97643,-48.016142],jr:[-20.27855,-54.47396],mn:[-3.149216,-59.991881],mo:[-9.55129,-35.77068],nt:[-5.90448,-35.25401],pc:[-22.464278,-43.297476],pl:[-9.367,-40.573],pv:[-8.715,-63.893889],sg:[-29.225213,-54.930257],sl:[-2.597222,-44.2375],sn:[-2.429722,-54.798889],sr:[-23.601915,-47.094063],st:[-19.98887,-40.5794],ua:[-0.143611,-67.056944],mi:[-28.128373,-49.471816],tt:[-4.248333,-69.935],vh:[-12.6973,-60.1037],rb:[-9.86163,-67.8961]};
+map.createPane('radarStationPane');map.getPane('radarStationPane').style.zIndex=485;
+const radarStationLayer=L.layerGroup();
+function radarProductAge(im){const d=radarDate(im?.timestamp);return d?Math.max(0,Math.round((Date.now()-d.getTime())/60000)):null;}
+function radarProductName(im){return String(im?.radar||im?.area||'Radar').replace(/^Radar\s*-\s*/i,'');}
+function radarProductState(im){const age=radarProductAge(im),size=Number(im?.size);if(age===null)return{key:'unknown',label:'INDETERMINADO',color:'#8c9aa1',detail:'Horário do produto indisponível'};if(age>30)return{key:'offline',label:'SEM DADOS RECENTES',color:'#ff5362',detail:`Último produto há ${age} min`};if(Number.isFinite(size)&&size>0&&size<1800)return{key:'partial',label:'DADOS PARCIAIS',color:'#ffc13d',detail:`Produto anormalmente pequeno · ${size.toLocaleString('pt-BR')} B`};return{key:'normal',label:'DADOS DISPONÍVEIS',color:'#35df89',detail:'Produto recente recebido'};}
+function radarHealthCounts(images){const c={normal:0,partial:0,offline:0,unknown:0};for(const im of images||[])c[radarProductState(im).key]++;return c;}
+function radarStationPopup(im){const st=radarProductState(im),age=radarProductAge(im),size=Number(im?.size);return `<div class="moni-radar-popup"><div class="moni-radar-popup-status"><i style="background:${st.color}"></i><b>${st.label}</b></div><h3>${radarProductName(im)}</h3><div class="moni-radar-popup-grid"><span>Produto</span><b>MAXCAPPI</b><span>Código</span><b>${String(im?.area||'--').toUpperCase()}</b><span>Atualização</span><b>${radarStamp(im?.timestamp)}</b><span>Idade</span><b>${age===null?'--':age+' min'}</b><span>Tamanho</span><b>${Number.isFinite(size)&&size>0?size.toLocaleString('pt-BR')+' B':'--'}</b></div><p>${st.detail}</p><small>Fonte: REDEMET / DECEA<br>O status descreve o produto recebido pelo MONI, não a condição operacional do equipamento físico.</small></div>`;}
+function renderRadarStations(){radarStationLayer.clearLayers();if(!document.querySelector('#radar')?.checked)return;for(const im of radarLatest||[]){const code=String(im?.area||'').toLowerCase();const hc=im?.center&&Number.isFinite(Number(im.center.lat))&&Number.isFinite(Number(im.center.lon));const center=hc?[Number(im.center.lat),Number(im.center.lon)]:RADAR_CENTERS[code];if(!center)continue;const st=radarProductState(im);L.circleMarker(center,{pane:'radarStationPane',radius:7,color:'#071015',weight:2,fillColor:st.color,fillOpacity:.96}).bindPopup(()=>radarStationPopup(im),{maxWidth:310}).bindTooltip(radarProductName(im),{direction:'top',offset:[0,-7],opacity:.9}).addTo(radarStationLayer);}}
 function latestPerRadar(all){
   const by=new Map();for(const im of all){if(!im?.image)continue;const k=String(im.area||im.radar||im.image),t=radarDate(im.timestamp)?.getTime()||0,old=by.get(k),ot=old?(radarDate(old.timestamp)?.getTime()||0):-1;if(!old||t>ot)by.set(k,im);}return [...by.values()];
 }
@@ -469,7 +391,7 @@ async function refreshRadar(){
   if(!radarEnabled)return;const req=++radarReq;setRadarStatus('ATUALIZANDO…');
   try{
     const r=await fetch(`${RADAR_API}?area=all&tipo=maxcappi&anima=5`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(req!==radarReq||!radarEnabled)return;if(!data?.ok)throw new Error(data?.error||'REDEMET sem resposta');
-    const images=Array.isArray(data.images)?data.images:[];radarNetworkPayload=data;radarLatest=latestPerRadar(images);radarFrames=buildRadarFrames(images);renderRadarNetworkStatus();
+    const images=Array.isArray(data.images)?data.images:[];radarNetworkPayload=data;radarLatest=latestPerRadar(images);radarFrames=buildRadarFrames(images);renderRadarStations();
     if(!radarLatest.length){clearRadarOverlays();setRadarStatus('SEM DADOS');document.querySelector('#radarFrame').textContent='--';return;}
     stopRadarAnimation();
     const health=radarHealthCounts(radarLatest);
@@ -483,12 +405,9 @@ function toggleRadarAnimation(){
   if(radarPlaying){stopRadarAnimation();drawRadarImages(radarLatest,`${radarLatest.length} RADARES · ATUAL`);return;}if(radarFrames.length<2)return;
   radarPlaying=true;document.querySelector('#radarPlay').textContent='■ PARAR ANIMAÇÃO';radarFrameIndex=0;showRadarFrame(0);radarAnimTimer=setInterval(()=>showRadarFrame((radarFrameIndex+1)%radarFrames.length),1100);
 }
-function setRadar(on){radarEnabled=on;document.querySelector('#radarControls').classList.toggle('visible',on);if(on){refreshRadar();clearInterval(radarTimer);radarTimer=setInterval(refreshRadar,120000);}else{radarReq++;clearInterval(radarTimer);radarTimer=null;stopRadarAnimation();clearRadarOverlays();radarFrames=[];radarLatest=[];setRadarStatus('OFF');document.querySelector('#radarFrame').textContent='--';}}
+function setRadar(on){radarEnabled=on;document.querySelector('#radarControls').classList.toggle('visible',on);if(on){radarStationLayer.addTo(map);refreshRadar();clearInterval(radarTimer);radarTimer=setInterval(refreshRadar,120000);}else{map.removeLayer(radarStationLayer);radarStationLayer.clearLayers();radarReq++;clearInterval(radarTimer);radarTimer=null;stopRadarAnimation();clearRadarOverlays();radarFrames=[];radarLatest=[];setRadarStatus('OFF');document.querySelector('#radarFrame').textContent='--';}}
 document.querySelector('#radar').onchange=e=>setRadar(e.target.checked);
 document.querySelector('#radarPlay').onclick=toggleRadarAnimation;
-document.querySelector('#radarNetworkStatus')?.addEventListener('click',openRadarNetworkStatus);
-document.querySelectorAll('[data-radar-status-close]').forEach(el=>el.addEventListener('click',closeRadarNetworkStatus));
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeRadarNetworkStatus();});
 document.querySelector('#radarOpacity').oninput=e=>{document.querySelector('#radarOpacityValue').textContent=e.target.value+'%';radarOverlays.forEach(x=>x.setOpacity(Number(e.target.value)/100));};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&radarEnabled)refreshRadar();});
 

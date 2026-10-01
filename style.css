@@ -530,30 +530,5 @@ header b,.status,.status span{white-space:nowrap}
 }
 
 
-/* ================= REDEMET · STATUS DOS PRODUTOS ================= */
-.radar-status-open{margin-top:7px}
-.radar-status-modal{display:none;position:fixed;inset:0;z-index:20000}
-.radar-status-modal.open{display:block}
-.radar-status-shade{position:absolute;inset:0;background:rgba(0,7,11,.72);backdrop-filter:blur(3px)}
-.radar-status-panel{position:absolute;right:18px;top:5vh;width:min(570px,calc(100vw - 36px));max-height:90vh;overflow:auto;background:#09131a;border:1px solid #294654;border-radius:14px;box-shadow:0 24px 90px #000a;color:#d9e8ef}
-.radar-status-head{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;padding:17px 18px 13px;background:rgba(9,19,26,.97);border-bottom:1px solid #203641}
-.radar-status-head small{font:600 9px Consolas,monospace;letter-spacing:.12em;color:#50cfff}
-.radar-status-head h2{margin:4px 0 0;font-size:18px}
-.radar-status-x{border:0;background:none;color:#91a8b3;font-size:27px;cursor:pointer}
-.radar-status-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:13px 14px 8px}
-.radar-status-summary>div{padding:10px;border:1px solid #203743;border-radius:8px;background:#0e1b23}
-.radar-status-summary b{display:block;font-size:17px}.radar-status-summary span{display:block;margin-top:2px;color:#718a96;font-size:8px;line-height:1.15}
-.radar-status-summary .good b{color:#36e38b}.radar-status-summary .partial b{color:#ffc13d}.radar-status-summary .bad b{color:#ff5a68}
-.radar-status-warning{margin:2px 14px 11px;padding:8px 10px;border-left:2px solid #42bde9;background:#0d1a22;color:#849aa5;font-size:9px;line-height:1.45}
-.radar-status-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px 16px}
-.radar-status-card{padding:11px;border:1px solid #213843;border-radius:9px;background:#0e1920}
-.radar-status-line{display:flex;align-items:center;gap:6px;font-size:9px;letter-spacing:.04em}
-.radar-status-line i{width:8px;height:8px;border-radius:50%;background:#8999a1}
-.radar-status-card.normal .radar-status-line i{background:#32df87;box-shadow:0 0 8px #32df8777}.radar-status-card.normal .radar-status-line strong{color:#4be899}
-.radar-status-card.partial .radar-status-line i{background:#ffc13d;box-shadow:0 0 8px #ffc13d77}.radar-status-card.partial .radar-status-line strong{color:#ffd365}
-.radar-status-card.offline .radar-status-line i{background:#ff5362;box-shadow:0 0 8px #ff536277}.radar-status-card.offline .radar-status-line strong{color:#ff7883}
-.radar-status-card h3{margin:6px 0 9px;font-size:13px}
-.radar-status-grid{display:grid;grid-template-columns:1fr auto;gap:4px 8px;font:9px Consolas,monospace}.radar-status-grid span{color:#708894}.radar-status-grid b{font-weight:500;color:#b2c9d3}
-.radar-status-card p{margin:8px 0 0;padding-top:7px;border-top:1px solid #1d3039;color:#788f99;font-size:9px;line-height:1.35}
-.radar-status-empty{grid-column:1/-1;padding:28px;text-align:center;color:#78909c}
-@media(max-width:620px){.radar-status-panel{left:0;right:0;top:auto;bottom:0;width:100%;max-height:86vh;border-radius:16px 16px 0 0}.radar-status-summary{grid-template-columns:1fr 1fr}.radar-status-list{grid-template-columns:1fr}}
+
+.moni-radar-popup{min-width:220px;color:#d8e7ee}.moni-radar-popup-status{display:flex;align-items:center;gap:7px;margin-bottom:6px;font-size:10px;letter-spacing:.04em}.moni-radar-popup-status i{width:9px;height:9px;border-radius:50%}.moni-radar-popup h3{margin:4px 0 10px;font-size:15px;color:#eef8fc}.moni-radar-popup-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:10px}.moni-radar-popup-grid span{color:#79919d}.moni-radar-popup-grid b{text-align:right;font-weight:600;color:#c9dce5}.moni-radar-popup p{margin:9px 0 7px;padding:7px 0;border-top:1px solid #29404a;border-bottom:1px solid #29404a;color:#9bb0ba;font-size:10px}.moni-radar-popup small{display:block;color:#718894;font-size:9px;line-height:1.4}
