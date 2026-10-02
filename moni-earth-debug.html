@@ -327,6 +327,120 @@ body.sources-open #sourcesBackdrop{
 }
 </style>
 
+
+<style id="moni-layout-refinement-v2">
+/* =========================================================
+   AJUSTE V2 — STATUS COMPACTO + FECHAR PADRONIZADO
+   ========================================================= */
+
+/* Mais espaço útil na barra e cards menores */
+#topHealth{
+  gap: 4px !important;
+  padding: 4px !important;
+}
+
+#topHealth .healthChip{
+  min-width: 72px !important;
+  padding: 5px 7px !important;
+}
+
+#topHealth .healthName{
+  font-size: 6.5px !important;
+  letter-spacing: .08em !important;
+}
+
+#topHealth .healthState{
+  margin-top: 2px !important;
+  font-size: 8px !important;
+}
+
+/* O botão externo serve SOMENTE para abrir */
+body.sources-open #sourcesMenuButton{
+  display: none !important;
+}
+
+/* Fechar fica dentro do cabeçalho do menu em PC e celular */
+#sourcesCloseButton{
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 7px;
+  background: rgba(255,255,255,.035);
+  color: rgba(255,255,255,.72);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: .15s ease;
+}
+
+#sourcesCloseButton:hover{
+  color: #fff;
+  background: rgba(255,255,255,.09);
+}
+
+#rightPanel .panelHeader{
+  position: relative;
+}
+
+#rightPanel .panelHeaderTop{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Mobile: tentar manter todos os status visíveis sem rolagem */
+@media (max-width: 700px){
+  #topHealth{
+    gap: 3px !important;
+    padding: 3px !important;
+    overflow-x: hidden !important;
+  }
+
+  #topHealth .healthChip{
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    padding: 5px 4px !important;
+  }
+
+  #topHealth .healthName{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 6px !important;
+    letter-spacing: .035em !important;
+  }
+
+  #topHealth .healthState{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 7px !important;
+  }
+
+  #sourcesCloseButton{
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+}
+
+/* Telas realmente estreitas */
+@media (max-width: 390px){
+  #topHealth .healthChip{
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+  }
+  #topHealth .healthName{
+    font-size: 5.5px !important;
+  }
+  #topHealth .healthState{
+    font-size: 6.5px !important;
+  }
+}
+</style>
+
 </head>
 <body>
 
@@ -850,6 +964,57 @@ start();
 
   /* Começa fechado tanto no PC quanto no celular */
   setOpen(false);
+})();
+</script>
+
+
+<script id="moni-layout-refinement-v2-js">
+(function(){
+  function installInternalClose(){
+    const panel = document.getElementById("rightPanel");
+    if(!panel || document.getElementById("sourcesCloseButton")) return;
+
+    const header = panel.querySelector(".panelHeader");
+    if(!header) return;
+
+    const title = header.querySelector(".panelTitle");
+    const sub = header.querySelector(".panelSub");
+
+    const top = document.createElement("div");
+    top.className = "panelHeaderTop";
+
+    const textWrap = document.createElement("div");
+    textWrap.style.minWidth = "0";
+    textWrap.style.flex = "1";
+
+    if(title) textWrap.appendChild(title);
+    if(sub) textWrap.appendChild(sub);
+
+    const close = document.createElement("button");
+    close.id = "sourcesCloseButton";
+    close.type = "button";
+    close.setAttribute("aria-label","Fechar fontes");
+    close.textContent = "×";
+
+    top.appendChild(textWrap);
+    top.appendChild(close);
+    header.appendChild(top);
+
+    close.addEventListener("click", function(){
+      document.body.classList.remove("sources-open");
+      const opener = document.getElementById("sourcesMenuButton");
+      if(opener){
+        opener.setAttribute("aria-expanded","false");
+        opener.textContent = "FONTES ☰";
+      }
+    });
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", installInternalClose);
+  }else{
+    installInternalClose();
+  }
 })();
 </script>
 
