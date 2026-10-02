@@ -1018,5 +1018,97 @@ start();
 })();
 </script>
 
+
+<script id="moni-viirs-brazil-pass">
+(function(){
+const REGION={south:-35.5,north:6.5,west:-74.5,east:-32.0};
+const STEP=30000, BACK=14*3600000, FWD=14*3600000, REFRESH=300000;
+const inside=p=>p&&p.lat>=REGION.south&&p.lat<=REGION.north&&p.lon>=REGION.west&&p.lon<=REGION.east;
+const age=ms=>ms<3600000?Math.round(ms/60000)+" min":(ms/3600000).toFixed(1)+" h";
+const utc=d=>d?d.toISOString().slice(11,16)+" UTC":"--";
+
+function scan(obj,a,b){
+  const passes=[]; let cur=null;
+  for(let t=a.getTime();t<=b.getTime();t+=STEP){
+    const d=new Date(t),p=obj.propagate(d),hit=inside(p);
+    if(hit&&!cur)cur={start:d,end:d,positions:[],best:null,score:1e9};
+    if(hit&&cur){
+      cur.end=d; cur.positions.push(Cesium.Cartesian3.fromDegrees(p.lon,p.lat,7000));
+      const s=Math.abs(p.lat+14);
+      if(s<cur.score){cur.score=s;cur.best={lat:p.lat,lon:p.lon,date:d};}
+    }
+    if(!hit&&cur){if(cur.positions.length>1)passes.push(cur);cur=null;}
+  }
+  if(cur&&cur.positions.length>1)passes.push(cur);
+  return passes;
+}
+function corridor(points,half=1530000){
+  const L=[],R=[];
+  for(let i=0;i<points.length;i++){
+    const c=Cesium.Cartographic.fromCartesian(points[i]);
+    const a=Cesium.Cartographic.fromCartesian(points[Math.max(0,i-1)]);
+    const b=Cesium.Cartographic.fromCartesian(points[Math.min(points.length-1,i+1)]);
+    const dy=b.latitude-a.latitude,dx=(b.longitude-a.longitude)*Math.cos(c.latitude);
+    const n=Math.hypot(dx,dy)||1, ang=half/6378137;
+    const ny=-dx/n,nx=dy/n,cl=Math.max(.18,Math.cos(c.latitude));
+    L.push(Cesium.Cartesian3.fromRadians(c.longitude+nx*ang/cl,c.latitude+ny*ang,6000));
+    R.push(Cesium.Cartesian3.fromRadians(c.longitude-nx*ang/cl,c.latitude-ny*ang,6000));
+  }
+  return L.concat(R.reverse());
+}
+function remove(obj){
+  ["moniLastLine","moniLastSwath","moniLastLabel","moniNextLine"].forEach(k=>{
+    if(obj[k]){viewer.entities.remove(obj[k]);obj[k]=null;}
+  });
+}
+function draw(obj,last,next){
+  remove(obj);
+  const id=obj.src?.id||"";
+  const color=id==="noaa21"?Cesium.Color.fromCssColorString("#44e6b1"):
+              id==="noaa20"?Cesium.Color.fromCssColorString("#ffbd4a"):
+              Cesium.Color.fromCssColorString("#ff668a");
+  if(last){
+    obj.moniLastLine=viewer.entities.add({polyline:{positions:last.positions,width:2.2,material:color.withAlpha(.85),arcType:Cesium.ArcType.NONE}});
+    const poly=corridor(last.positions);
+    if(poly.length>3)obj.moniLastSwath=viewer.entities.add({polygon:{
+      hierarchy:new Cesium.PolygonHierarchy(poly),material:color.withAlpha(.075),
+      outline:true,outlineColor:color.withAlpha(.28),perPositionHeight:true}});
+    if(last.best)obj.moniLastLabel=viewer.entities.add({
+      position:Cesium.Cartesian3.fromDegrees(last.best.lon,last.best.lat,18000),
+      label:{text:`${obj.src.name}\nPASSAGEM • ${age(Date.now()-last.end.getTime())}`,
+        font:"600 10px Arial",fillColor:Cesium.Color.WHITE,outlineColor:Cesium.Color.BLACK,
+        outlineWidth:3,style:Cesium.LabelStyle.FILL_AND_OUTLINE,
+        distanceDisplayCondition:new Cesium.DistanceDisplayCondition(0,12000000),
+        disableDepthTestDistance:Number.POSITIVE_INFINITY}});
+  }
+  if(next)obj.moniNextLine=viewer.entities.add({polyline:{positions:next.positions,width:1.3,
+    material:new Cesium.PolylineDashMaterialProperty({color:color.withAlpha(.55),dashLength:12}),
+    arcType:Cesium.ArcType.NONE}});
+}
+function calc(obj){
+  const now=new Date();
+  const past=scan(obj,new Date(now.getTime()-BACK),now);
+  const future=scan(obj,now,new Date(now.getTime()+FWD));
+  const last=past.at(-1)||null,next=future[0]||null;
+  draw(obj,last,next);
+  if(obj.src){
+    obj.src.coverageText=last?`VIIRS atual + passagem Brasil ${age(Date.now()-last.end.getTime())}`:"VIIRS ~3060 km";
+    obj.src.products=["VIIRS","posição atual via SGP4","swath atual ~3060 km (visual)",
+      last?`última passagem Brasil: ${utc(last.start)}–${utc(last.end)} • ${age(Date.now()-last.end.getTime())}`:"última passagem Brasil: --",
+      next?`próxima passagem Brasil: ${utc(next.start)}–${utc(next.end)}`:"próxima passagem Brasil: --"];
+  }
+}
+function refresh(){
+  if(!window.viewer||typeof satelliteEntities==="undefined")return false;
+  let n=0; for(const o of satelliteEntities.values())if(o?.propagate){calc(o);n++;}
+  if(n)console.log("VIIRS Brasil: passagens atualizadas",n);
+  return !!n;
+}
+let tries=0;
+const boot=setInterval(()=>{tries++;try{if(refresh()){clearInterval(boot);setInterval(refresh,REFRESH)}else if(tries>90)clearInterval(boot)}
+catch(e){console.error("VIIRS Brasil:",e);if(tries>90)clearInterval(boot)}},1000);
+})();
+</script>
+
 </body>
 </html>
