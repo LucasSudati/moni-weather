@@ -100,10 +100,55 @@
       #legend{display:none}
       #controls{right:326px}
     }
+
+    /* MOBILE — mesmo conceito da tela principal: mapa livre + painel em gaveta */
+    #mobileMenuButton{display:none}
+    #mobileBackdrop{display:none}
+    @media(max-width:700px){
+      #brand{left:14px;top:14px;font-size:11px}
+      #utcClock{left:14px;top:34px;font-size:8px}
+      #legend{display:none}
+      #topHealth{
+        top:58px;left:10px;right:10px;transform:none;
+        display:flex;overflow-x:auto;gap:5px;padding:5px;max-width:none;
+        scrollbar-width:none;
+      }
+      #topHealth::-webkit-scrollbar{display:none}
+      .healthChip{min-width:76px;padding:6px 8px;flex:0 0 auto}
+      .healthName{font-size:7px}.healthState{font-size:8px}
+      #rightPanel{
+        top:0;right:0;bottom:0;width:min(88vw,340px);height:100dvh;
+        border-radius:0;border-top:0;border-right:0;border-bottom:0;
+        transform:translateX(105%);transition:transform .22s ease;z-index:70;
+      }
+      body.mobile-panel-open #rightPanel{transform:translateX(0)}
+      #mobileBackdrop{
+        position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:65;
+        backdrop-filter:blur(2px);
+      }
+      body.mobile-panel-open #mobileBackdrop{display:block}
+      #mobileMenuButton{
+        display:block;position:fixed;right:12px;top:12px;z-index:80;
+        width:42px;height:42px;border:1px solid var(--line);border-radius:9px;
+        background:rgba(5,8,15,.78);color:#fff;font-size:20px;
+        backdrop-filter:blur(14px);
+      }
+      #detailPanel{
+        left:10px;right:10px;bottom:10px;width:auto;max-height:48dvh;overflow:auto;
+        padding:12px;z-index:60;
+      }
+      .detailGrid{gap:6px}.detailCell{padding:7px}
+      #controls{right:12px;bottom:12px;gap:6px}
+      .controlButton{width:40px;height:40px}
+      .panelHeader{padding-top:18px}
+      #sourceList{padding-bottom:28px}
+    }
   </style>
 </head>
 <body>
   <div id="cesiumContainer"></div>
+  <div id="mobileBackdrop"></div>
+  <button id="mobileMenuButton" aria-label="Abrir fontes MONI">☰</button>
 
   <div id="brand">MONI <span>/ EARTH / DEBUG</span></div>
   <div id="utcClock">-- UTC</div>
@@ -257,6 +302,7 @@ function newestByRadar(items){
 }
 
 function openDetail(src){
+  if(window.innerWidth<=700) setMobilePanel(false);
   $("detailPanel").classList.add("visible");
   $("detailName").textContent=src.name||"--";
   $("detailRole").textContent=src.role||"--";
@@ -269,6 +315,14 @@ function openDetail(src){
   $("detailProducts").innerHTML=(src.products||[]).map(x=>"• "+x).join("<br>") || "Sem produtos descritos.";
 }
 $("detailClose").onclick=()=>$("detailPanel").classList.remove("visible");
+
+function setMobilePanel(open){
+  document.body.classList.toggle("mobile-panel-open", open);
+  $("mobileMenuButton").textContent = open ? "×" : "☰";
+}
+$("mobileMenuButton").onclick=()=>setMobilePanel(!document.body.classList.contains("mobile-panel-open"));
+$("mobileBackdrop").onclick=()=>setMobilePanel(false);
+
 
 function createSourceCard(container,src,onClick){
   const d=document.createElement("div"); d.className="source";
