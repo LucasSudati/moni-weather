@@ -144,8 +144,195 @@
       #sourceList{padding-bottom:28px}
     }
   </style>
+
+<style id="moni-standard-layout">
+/* =========================================================
+   MONI EARTH DEBUG — LAYOUT PADRONIZADO PC + MOBILE
+   Fontes: gaveta lateral em ambos
+   Status: faixa horizontal em ambos
+   ========================================================= */
+
+:root{
+  --sources-width: 340px;
+  --top-status-height: 58px;
+}
+
+/* Status sempre horizontal */
+#topHealth{
+  position: fixed !important;
+  top: 16px !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+  z-index: 70 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+  max-width: calc(100vw - 150px) !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+#topHealth::-webkit-scrollbar{display:none}
+#topHealth .healthChip{flex:0 0 auto !important}
+
+/* Painel de fontes é gaveta lateral em qualquer resolução */
+#rightPanel{
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: auto !important;
+  width: min(var(--sources-width), 88vw) !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  transform: translateX(102%) !important;
+  transition: transform .24s ease !important;
+  z-index: 90 !important;
+}
+body.sources-open #rightPanel{
+  transform: translateX(0) !important;
+}
+
+/* Botão único para Fontes */
+#sourcesMenuButton{
+  position: fixed;
+  top: 18px;
+  right: 20px;
+  z-index: 95;
+  height: 40px;
+  min-width: 92px;
+  padding: 0 13px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 9px;
+  background: rgba(5,8,15,.72);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  font: 700 9px/1 Inter,Arial,sans-serif;
+  letter-spacing: .11em;
+  cursor: pointer;
+}
+#sourcesMenuButton:hover{background:rgba(35,48,70,.88)}
+body.sources-open #sourcesMenuButton{
+  right: min(calc(var(--sources-width) + 12px), calc(88vw + 12px));
+}
+
+/* Fundo ao abrir a gaveta */
+#sourcesBackdrop{
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  background: rgba(0,0,0,.42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+body.sources-open #sourcesBackdrop{
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Controles não dependem mais da largura do painel */
+#controls{
+  right: 20px !important;
+  bottom: 22px !important;
+}
+
+/* O painel de detalhes continua separado */
+#detailPanel{
+  z-index: 80 !important;
+}
+
+/* Desktop */
+@media (min-width: 701px){
+  #rightPanel{--sources-width:360px}
+}
+
+/* Mobile */
+@media (max-width: 700px){
+  #brand{
+    top: 14px !important;
+    left: 14px !important;
+    font-size: 11px !important;
+  }
+  #utcClock{
+    top: 35px !important;
+    left: 14px !important;
+    font-size: 8px !important;
+  }
+  #sourcesMenuButton{
+    top: 12px;
+    right: 12px;
+    min-width: 72px;
+    height: 36px;
+    padding: 0 10px;
+    font-size: 8px;
+  }
+  body.sources-open #sourcesMenuButton{
+    right: 12px;
+  }
+
+  /* Faixa horizontal abaixo do cabeçalho */
+  #topHealth{
+    top: 58px !important;
+    left: 10px !important;
+    right: 10px !important;
+    transform: none !important;
+    max-width: none !important;
+    width: calc(100vw - 20px) !important;
+    padding: 5px !important;
+  }
+  #topHealth .healthChip{
+    min-width: 82px !important;
+    padding: 6px 8px !important;
+  }
+  #topHealth .healthName{font-size:7px !important}
+  #topHealth .healthState{font-size:8px !important}
+
+  #rightPanel{
+    width: min(330px, 88vw) !important;
+  }
+
+  #legend{display:none !important}
+
+  #detailPanel{
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    width: auto !important;
+    max-height: 48vh !important;
+    overflow-y: auto !important;
+  }
+
+  #controls{
+    right: 10px !important;
+    bottom: 10px !important;
+    gap: 5px !important;
+  }
+  .controlButton{
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  body.sources-open #controls,
+  body.sources-open #detailPanel{
+    pointer-events:none;
+  }
+}
+</style>
+
 </head>
 <body>
+
+  <div id="sourcesBackdrop" aria-hidden="true"></div>
+  <button id="sourcesMenuButton" type="button" aria-label="Abrir fontes" aria-expanded="false">FONTES ☰</button>
+
   <div id="cesiumContainer"></div>
   <div id="mobileBackdrop"></div>
   <button id="mobileMenuButton" aria-label="Abrir fontes MONI">☰</button>
@@ -630,5 +817,41 @@ async function start(){
 }
 start();
 </script>
+
+<script id="moni-standard-layout-js">
+(function(){
+  const btn = document.getElementById("sourcesMenuButton");
+  const backdrop = document.getElementById("sourcesBackdrop");
+  const panel = document.getElementById("rightPanel");
+  if(!btn || !panel) return;
+
+  function setOpen(open){
+    document.body.classList.toggle("sources-open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    btn.textContent = open ? "FECHAR ×" : "FONTES ☰";
+  }
+
+  btn.addEventListener("click", function(){
+    setOpen(!document.body.classList.contains("sources-open"));
+  });
+
+  if(backdrop) backdrop.addEventListener("click", function(){ setOpen(false); });
+
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape") setOpen(false);
+  });
+
+  /* Selecionou uma fonte: libera o globo e mostra o detalhe */
+  panel.addEventListener("click", function(e){
+    if(e.target.closest(".source")){
+      window.setTimeout(function(){ setOpen(false); }, 80);
+    }
+  });
+
+  /* Começa fechado tanto no PC quanto no celular */
+  setOpen(false);
+})();
+</script>
+
 </body>
 </html>
