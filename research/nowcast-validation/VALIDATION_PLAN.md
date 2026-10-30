@@ -40,3 +40,9 @@ O radar pode ter latência e lacunas; centroides podem mudar com a evolução da
 
 ## Integração
 Desenvolvimento isolado nesta branch. A `main` permanece inalterada até revisão, testes e autorização explícita.
+
+## Integração com o inventário histórico do Rio Grande do Sul (30/10/2026)
+
+O laboratório histórico incluirá enchentes, enxurradas, chuva extrema, granizo, vendavais e tempestades convectivas. Para a validação **atual** de nowcast de células, selecionar apenas episódios com observações radar suficientes para estimar trajetórias e contornos nos horizontes 15, 30, 45 e 60 min. Enchentes e cheias serão usadas como contexto meteorológico e para estudos hidrológicos **separados**, com variáveis-alvo, horizontes, baselines e métricas próprios (por exemplo, nível do rio e erro de tempo do pico). Não confundir validação de deslocamento de célula com validação de previsão de inundação.
+
+Criar partições por episódio hidrometeorológico e por período; registrar a ausência de dados, a distribuição geográfica e o viés de seleção. Priorizar retrospectiva do evento de abril–maio de 2024, condicionada à disponibilidade e licenciamento de cada fonte. Não declarar desempenho antes de processar dados e publicar métricas reproduzíveis.
