@@ -37,3 +37,38 @@ Cobertura e disponibilidade histórica variam por sensor; a rede de radar pode a
 
 ## Integração
 Trabalho restrito a esta branch até revisão técnica. Integração na `main` somente após testes, revisão de dados e autorização explícita.
+
+## Ampliação do corpus — Rio Grande do Sul
+
+**Decisão de escopo (30/10/2026):** construir um inventário abrangente de eventos hidrometeorológicos do Rio Grande do Sul, não apenas de granizo. Incluir enchentes e inundações, enxurradas, cheias de rios, chuva extrema, tempestades convectivas, vendavais, tornados, granizo e episódios compostos. O inventário será continuamente ampliado conforme a disponibilidade de registros verificáveis; **não é possível presumir cobertura de todas as ocorrências históricas**.
+
+### Fontes candidatas e verificação
+- **Defesa Civil do RS e S2iD:** registros de ocorrências, danos e municípios afetados; confirmar granularidade, licenças e acesso.
+- **ANA / HidroWeb e redes hidrométricas:** níveis, vazões, cotas de referência e séries temporais; conferir estações e qualidade.
+- **INMET:** estações, chuva, vento, temperatura e boletins, com metadados.
+- **CPRM / SGB:** monitoramento hidrológico e informações geológicas e de risco.
+- **CEMADEN:** pluviômetros, monitoramento e alertas onde houver cobertura.
+- **REDEMET / DECEA:** produtos de radar quando disponíveis e autorizados.
+- **NOAA / NASA / INPE:** satélite, GLM e outras observações, respeitando a janela operacional de cada instrumento.
+- **Órgãos estaduais e municipais:** registros e relatórios oficiais de impacto, com confirmação independente quando possível.
+
+Essas são **fontes a consultar**, não dados já obtidos ou verificados. Não usar eventos anteriores ao início da operação de determinado sensor como se tivessem observações desse sensor.
+
+### Organização dos estudos
+1. **Inventário mestre:** identificador, tipo de fenômeno, início/fim UTC, municípios, geometria, fonte, qualidade, incerteza, licença e disponibilidade de dados.
+2. **Catálogo de observações:** estação/sensor, variável, unidade, resolução, datum, cobertura, lacunas, flags de qualidade, checksum e versão.
+3. **Casos de estudo:** evento hidrológico, convectivo ou composto, com cronologia e ligações entre chuva, níveis dos rios, radar, satélite e impactos.
+4. **Conjuntos de avaliação por tarefa:** nowcast de células para 15–60 min; chuva intensa; cheias com horizontes e métricas próprios. **Não usar erro de trajetória de células para avaliar previsão de inundação.**
+5. **Partições independentes:** separar tempestades e episódios de cheia por evento e período, evitando que janelas correlacionadas entrem em treino e teste.
+6. **Relatórios de lacunas:** eventos sem radar, satélite ou estações suficientes continuam catalogados, mas não entram em métricas incompatíveis.
+
+### Eventos prioritários para levantamento
+- Enchentes e chuvas extremas de **abril–maio de 2024** no RS.
+- Outros episódios históricos de cheias, vendavais e granizo a identificar por fontes oficiais, sem antecipar contagens ou datas não verificadas.
+
+### Critérios de qualidade
+Não tratar ausência de registro como ausência de fenômeno; distinguir relato de observação instrumental; manter dados brutos e proveniência; não inferir causa de impacto apenas por correlação temporal; registrar limitações espaciais e mudanças de instrumentação.
+
+### Marco inicial
+Publicar primeiro o esquema do inventário e uma lista de fontes verificadas. Depois coletar eventos por períodos, auditar cobertura e somente então construir conjuntos de validação reproduzíveis.
+
