@@ -669,6 +669,28 @@ Siga sempre alertas e orientações oficiais.
 
 ------------------------------------------------------------------------
 
+# Pesquisa científica e metodologia de validação
+
+O MONI Weather mantém uma linha de pesquisa exploratória sobre a relação entre observações ópticas do **GOES-19 GLM** e fontes de rádio em **VHF da North Alabama Lightning Mapping Array (NALMA)**. O estudo propõe analisar eventos no Alabama e discutir os limites de transferência da metodologia ao Rio Grande do Sul.
+
+A pesquisa está organizada em duas frentes de trabalho, mantidas em branches separadas da `main`:
+
+- **Validação quantitativa — [`research/nalma-glm-validation`](https://github.com/LucasSudati/moni-weather/blob/research/nalma-glm-validation/research/nalma-glm/VALIDATION_PROTOCOL.md):** define associação espaço-temporal, métricas de precisão, revocação, especificidade e F1, matriz de confusão, separação de amostras por tempestade, controle de incertezas e critérios de reprodutibilidade.
+- **Revisão científica interna — [`research/nalma-glm-peer-review`](https://github.com/LucasSudati/moni-weather/blob/research/nalma-glm-peer-review/research/nalma-glm/INTERNAL_REVIEW_PROTOCOL.md):** verifica coerência física, equações, hipóteses, fontes de dados, vieses, limitações instrumentais e interpretação das conclusões. Trata-se de uma revisão interna inspirada em critérios de revisão por pares, **não** de uma avaliação externa independente.
+
+Documentos de referência:
+
+- [Artigo científico exploratório — correlação GLM–NALMA](research/articles/glm-nalma-alabama-brasil.md).
+- [Protocolo de validação quantitativa](https://github.com/LucasSudati/moni-weather/blob/research/nalma-glm-validation/research/nalma-glm/VALIDATION_PROTOCOL.md).
+- [Protocolo de revisão científica interna](https://github.com/LucasSudati/moni-weather/blob/research/nalma-glm-peer-review/research/nalma-glm/INTERNAL_REVIEW_PROTOCOL.md).
+- [Primeira auditoria metodológica e matemática (30/10/2026)](https://github.com/LucasSudati/moni-weather/blob/research/nalma-glm-peer-review/research/nalma-glm/AUDIT_2026-10-30.md).
+
+**Fluxo de trabalho:** formular hipóteses e critérios → revisar fundamentos físicos e matemáticos → preparar e documentar dados → executar testes reproduzíveis com referências independentes → avaliar métricas e limitações → realizar revisão cruzada → propor integração à `main` somente após análise dos resultados.
+
+**Limitações atuais:** GLM detecta emissões ópticas associadas a raios, e NALMA mapeia fontes VHF; nenhum deles, isoladamente, comprova que uma descarga atingiu o solo. A classificação de raios nuvem-solo (CG) exige rótulos de referência independentes. A NALMA não fornece cobertura observacional equivalente no Rio Grande do Sul. **Ainda não há resultados experimentais que validem uma classificação CG no MONI Weather.**
+
+------------------------------------------------------------------------
+
 # Roadmap
 
 - [ ] painel de coordenação de pontos de apoio;
