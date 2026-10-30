@@ -1,6 +1,15 @@
 
 # MONI Weather
 
+## Lição 1 — classificação experimental de descargas (NALMA × GOES-19 GLM)
+
+**Meta:** desenvolver e validar um padrão matemático que use fontes eletromagnéticas VHF tridimensionais da NALMA para interpretar flashes ópticos do GOES-19 GLM, distinguindo **possível descarga nuvem-solo (CG)**, **descarga sem contato confirmado com o solo (IC/CC)** e **indeterminado**. O GLM detecta luz, não mede diretamente o campo eletromagnético. Raio e relâmpago não são fenômenos fisicamente separados; o critério operacional é o contato com o solo.
+
+**Método:** associar observações por tempo e espaço; extrair altitude, extensão, duração e propagação VHF, além de energia/área óptica; treinar um classificador com rótulos independentes de descargas nuvem-solo; validar por tempestade e calibrar a confiança. A ausência de fontes NALMA não invalida um flash GLM. Sem evidência suficiente, manter **indeterminado**. A aplicação no Brasil exige validação adicional e não deve afirmar impacto no solo com base apenas no GLM/NALMA.
+
+**Estado:** pesquisa experimental; ainda sem amostra NALMA real processada nem modelo treinado. Ver [plano de dados](research/nalma-glm/NALMA_DATA_PLAN.md) e [testes sintéticos](research/nalma-glm/README.md).
+
+
 **Mapa colaborativo de alerta e apoio para tempestades e catástrofes.**
 
 O MONI Weather reúne, na mesma interface, o que está acontecendo **no
