@@ -25,23 +25,112 @@ A NALMA disponibiliza dados processados de fontes VHF, tipicamente em ASCII comp
 O recorte inicial será de pelo menos três tempestades independentes no Alabama e três no Rio Grande do Sul, condicionado à disponibilidade. As datas devem coincidir com a operação do GOES-19, e as amostras serão pareadas por fase convectiva, intensidade, horário e geometria de observação. Para verificar CG, será necessária fonte independente de rótulos de descargas nuvem-solo.
 
 ## 4. Formulação matemática
-Duração de um flash: T = t_f - t_i.
 
-Taxa de flashes: F = N / Δt, com Δt em minutos.
+As expressões seguintes usam notação matemática LaTeX em blocos, com grandezas e unidades definidas no texto.
 
-Densidade espaço-temporal: D = N / (S × Δt), onde S é a área analisada em km².
+**Duração de um flash:**
 
-Energia óptica por duração: Q = E / T, se T > 0; indicador óptico, não potência elétrica.
+$$
+T = t_f - t_i
+$$
 
-Energia óptica por área: U = E / A, se A > 0.
+em que \(t_i\) e \(t_f\) são os instantes inicial e final, e \(T\) é expresso em segundos.
 
-Variação relativa da taxa: J = (F_atual - F_base) / max(F_base, ε), com ε declarado.
+**Taxa de flashes:**
 
-Para um agrupamento de N fontes VHF: altitude média z̄ = Σ z_i / N; extensão vertical Δz = max(z_i) - min(z_i); duração Δt_VHF = max(t_i) - min(t_i); fração abaixo de altura h0: p_baixa = #{z_i < h0} / N. A fração de fontes baixas não demonstra contato com o solo.
+$$
+F = \frac{N_f}{\Delta t}
+$$
 
-A distância horizontal entre centros é calculada pela fórmula de Haversine. A separação temporal entre intervalos é zero quando eles se sobrepõem, ou o menor intervalo entre suas extremidades quando não se sobrepõem. O protótipo atual usa 25 km e 1 s como limites **meramente exploratórios**, sujeitos à calibração.
+em flashes por minuto, quando \(\Delta t\) está em minutos e \(N_f\) é a quantidade de flashes.
 
-Para classificação supervisionada, uma hipótese inicial é regressão logística multinomial: P(k|x) = exp(b_k + w_k·x) / Σ_c exp(b_c + w_c·x). A classe indeterminada deve ser tratada como abstenção quando a confiança for insuficiente. Sem validação e calibração, probabilidades não devem ser interpretadas como confiabilidade operacional.
+**Densidade espaço-temporal:**
+
+$$
+D = \frac{N_f}{S\,\Delta t}
+$$
+
+em flashes por km² por minuto, com \(S\) em km².
+
+**Energia óptica por duração:**
+
+$$
+Q = \frac{E}{T}, \qquad T>0
+$$
+
+em watts quando \(E\) está em joules. Trata-se de um indicador derivado da energia óptica registrada, não da potência elétrica da descarga.
+
+**Energia óptica por área:**
+
+$$
+U = \frac{E}{A}, \qquad A>0
+$$
+
+em J/km² quando \(A\) está em km².
+
+**Variação relativa da taxa de flashes:**
+
+$$
+J = \frac{F_{\mathrm{atual}}-F_{\mathrm{base}}}{\max(F_{\mathrm{base}},\varepsilon)}
+$$
+
+em que \(\varepsilon>0\) é um parâmetro de estabilização a ser declarado.
+
+Para um agrupamento de \(N_s\) fontes VHF da NALMA, com altitudes \(z_i\) e instantes \(t_i\):
+
+**Altitude média:**
+
+$$
+\bar z = \frac{1}{N_s}\sum_{i=1}^{N_s}z_i
+$$
+
+**Extensão vertical:**
+
+$$
+\Delta z = \max_i(z_i)-\min_i(z_i)
+$$
+
+**Duração da atividade VHF:**
+
+$$
+\Delta t_{\mathrm{VHF}} = \max_i(t_i)-\min_i(t_i)
+$$
+
+**Fração de fontes abaixo da altura de referência \(h_0\):**
+
+$$
+p_{\mathrm{baixa}} = \frac{1}{N_s}\sum_{i=1}^{N_s}\mathbf{1}(z_i<h_0)
+$$
+
+A presença de fontes VHF em baixa altitude não demonstra contato da descarga com o solo.
+
+**Distância horizontal entre centros (Haversine):**
+
+$$
+d=2R\arcsin\left(\sqrt{\sin^2\left(\frac{\varphi_2-\varphi_1}{2}\right)+\cos(\varphi_1)\cos(\varphi_2)\sin^2\left(\frac{\lambda_2-\lambda_1}{2}\right)}\right)
+$$
+
+em que \(R\) é o raio terrestre, \(\varphi\) representa latitude e \(\lambda\), longitude, ambas em radianos.
+
+**Separação temporal entre intervalos NALMA e GLM:**
+
+$$
+\Delta t_{\mathrm{gap}}=\max\left(0,\ t_{N,0}-t_{G,1},\ t_{G,0}-t_{N,1}\right)
+$$
+
+O valor é zero quando os intervalos se sobrepõem. Os limites iniciais de 25 km e 1 s são **meramente exploratórios**, sujeitos à calibração.
+
+**Classificador supervisionado — regressão logística multinomial:**
+
+$$
+s_k=b_k+\mathbf{w}_k^\mathsf{T}\mathbf{x}
+$$
+
+$$
+P(k\mid\mathbf{x})=\frac{\exp(s_k)}{\sum_c\exp(s_c)}
+$$
+
+A classe indeterminada corresponde à abstenção quando a confiança é insuficiente. Sem validação e calibração, essas probabilidades não representam confiabilidade operacional.
 
 ## 5. Metodologia experimental
 Primeiro, selecionar tempestades e registrar os metadados de cada conjunto. Segundo, preservar arquivos originais e checksums, converter horários para UTC, verificar unidades e filtrar registros de qualidade inadequada. Terceiro, agrupar fontes VHF e associá-las a flashes ópticos, mantendo associações ambíguas identificadas. Quarto, extrair distribuições de duração, energia, área, frequência e extensão elétrica. Quinto, comparar regiões por estatísticas robustas, incluindo mediana, intervalo interquartil, distância de Wasserstein e teste Kolmogorov–Smirnov, com incerteza estimada por reamostragem de tempestades.
