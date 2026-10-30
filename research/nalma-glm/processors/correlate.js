@@ -1,6 +1,13 @@
 // Correlaciono agrupamentos VHF e flashes GLM por proximidade temporal e espacial.
 // Este módulo experimental não identifica descargas nuvem-solo.
 export function distanceKm(a, b) {
+  // Rejeito coordenadas inválidas para não gerar associações com NaN.
+  for (const p of [a, b]) {
+    if (!Number.isFinite(p?.latitude) || !Number.isFinite(p?.longitude) ||
+        Math.abs(p.latitude) > 90 || Math.abs(p.longitude) > 180) {
+      throw new Error("Coordenadas inválidas");
+    }
+  }
   const rad = Math.PI / 180;
   const dLat = (b.latitude - a.latitude) * rad;
   const dLon = (b.longitude - a.longitude) * rad;
@@ -11,7 +18,8 @@ export function distanceKm(a, b) {
 export function correlate(clusters, flashes, options = {}) {
   const maxDistanceKm = options.maxDistanceKm ?? 25;
   const maxGapMs = options.maxGapMs ?? 1000;
-  if (!(maxDistanceKm > 0) || !(maxGapMs >= 0)) throw new Error("Limites inválidos");
+  if (!Number.isFinite(maxDistanceKm) || !Number.isFinite(maxGapMs) ||
+      !(maxDistanceKm > 0) || !(maxGapMs >= 0)) throw new Error("Limites inválidos");
   const matches = [];
   for (const c of clusters) for (const f of flashes) {
     const cs = Date.parse(c.start_time_utc), ce = Date.parse(c.end_time_utc);
