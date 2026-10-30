@@ -1,52 +1,70 @@
-# NALMA — formato dos dados e normalização (versão de estudo 0.1)
+# NALMA — formato de dados confirmado na documentação NASA
 
-Fonte planejada: NASA GHRC NALMA V1, arquivos **processados full-rate**, geralmente ASCII compactado gzip (.gz). Referência de formato: https://ghrc.nsstc.nasa.gov/pub/lma/nalmaraw/doc/nalma_dataset.pdf . O layout exato de colunas deve ser confirmado pelo cabeçalho do arquivo real. **Ainda não foi obtida uma amostra real.**
+**Estado em 30/10/2026:** estrutura conferida no [guia NASA GHRC NALMA](https://ghrc.nsstc.nasa.gov/pub/lma/nalmaraw/doc/nalma_dataset.pdf), especialmente as Tabelas 2, 3 e 6. **Ainda não foi baixado nem validado um arquivo de observações real.**
 
-## Estrutura esperada
-1. Cabeçalho: estação/rede, instante de referência, configuração, informações de processamento e descrição das colunas.
-2. Registros de fontes VHF localizadas, uma fonte por linha.
-3. Metadados de qualidade, quando disponíveis.
+## Coleções distintas
 
-## Campos a identificar no cabeçalho real
-- tempo relativo à referência e/ou UTC;
-- latitude e longitude (graus);
-- altitude (metros);
-- potência da fonte (unidade definida pelo produto);
-- métrica de qualidade da localização (por exemplo chi-quadrado, quando disponível);
-- número de estações participantes e/ou máscaras de estações, se fornecidos.
+- **NALMA V1 full-rate processada:** DOI [10.5067/NALMA/DATA101](https://doi.org/10.5067/NALMA/DATA101). Esta é a coleção prioritária.
+- **NALMA NRT:** DOI [10.5067/NALMA/DATA201](https://doi.org/10.5067/NALMA/DATA201). Dados processados com decimação.
+- **NALMA Raw Data:** DOI [10.5067/NALMA/DATA301](https://doi.org/10.5067/NALMA/DATA301). Dados brutos por estação, outro formato; o parser deste projeto **não** os aceita.
 
-A ordem, os nomes e as unidades **não devem ser presumidos**. Uma fonte VHF não é um flash completo nem um raio nuvem-solo confirmado.
+O padrão documentado dos arquivos processados é `NALMA_YYMMDD_hhmmss_####.dat.gz`, onde `####` indica segundos analisados. O conteúdo é texto ASCII comprimido com gzip. O cabeçalho contém tempo de referência, estações, configuração e informações de formato. A linha `*** data ***` separa cabeçalho de registros.
 
-## Registro normalizado proposto (NÃO é linha original NALMA)
-```json
-{
-  "source_id": "exemplo",
-  "time_utc": "2026-01-01T12:00:00.000Z",
-  "latitude": null,
-  "longitude": null,
-  "altitude_m": null,
-  "power_raw": null,
-  "quality_chi2": null,
-  "station_count": null,
-  "source_file": "arquivo-original.gz"
-}
+## Campos de cada fonte VHF — Tabela 6 do guia
+
+| Posição | Campo do guia | Unidade | Interpretação |
+|---|---|---|---|
+| 1 | `time` | segundos UTC do dia | Instante da fonte, não tempo relativo ao primeiro flash |
+| 2 | `lat` | graus norte | Latitude |
+| 3 | `lon` | graus leste | Longitude; valores negativos a oeste |
+| 4 | `alt` | m | Altitude |
+| 5 | `reduced chi2` | adimensional | Qui-quadrado reduzido da localização |
+| 6 | `P` | dBW | Potência VHF informada no produto |
+| 7 | `mask` | hexadecimal | Máscara das estações que observaram a fonte |
+
+A máscara permite derivar o número de bits ativos, mas esse valor não substitui a avaliação geométrica/qualitativa das estações. Uma fonte VHF **não** é uma descarga completa.
+
+## Parser experimental
+
+- [`processors/parse-nalma.js`](processors/parse-nalma.js): `parseNalmaAscii(text, {filename})` e `parseNalmaGzip(buffer, {filename})`.
+- [`scripts/inspect-nalma.js`](scripts/inspect-nalma.js): resumo de arquivo local e checksum SHA-256.
+- [`tests/parse-nalma.test.js`](tests/parse-nalma.test.js): testes sintéticos de formato, gzip, validação e integração ilustrativa com GLM.
+
+No diretório raiz do repositório:
+
+```bash
+node --experimental-default-type=module research/nalma-glm/scripts/inspect-nalma.js /caminho/NALMA_250501_120000_3600.dat.gz
+node --experimental-default-type=module --test research/nalma-glm/tests/*.test.js
 ```
-Valores null são campos a preencher após inspeção real, não observações.
 
-## Equações para um agrupamento de N fontes
-- altitude média: z̄ = Σz_i / N.
-- extensão vertical: Δz = max(z_i) - min(z_i).
-- duração: Δt = max(t_i) - min(t_i).
-- fração de fontes baixas: p_baixa = #{z_i < h0} / N; h0 depende de calibração e da cobertura da rede.
-- extensão horizontal: maior distância geodésica entre fontes (km), com tratamento de custo computacional para N elevado.
-- propagação vertical aproximada: inclinação de regressão z(t), sensível a ruído e à ordem de detecção.
+O parser guarda `time_seconds_of_day` como número original e também `time_utc` ISO arredondado a milissegundos; **não** usar a versão arredondada para estudos de propagação VHF com precisão de microssegundos. Não foi testado contra arquivo NALMA real; os exemplos de teste são artificiais.
 
-## Procedimento de leitura
-1. Preservar .gz e checksum SHA-256.
-2. Ler cabeçalho, identificar colunas, unidades, instante-base e qualidade.
-3. Converter tempo para UTC e altitude para metros; validar latitude/longitude.
-4. Filtrar qualidade com limites documentados, não arbitrários.
-5. Agrupar fontes em descargas e associar ao GLM por tempo e espaço.
-6. Usar rótulos independentes de CG; ausência de VHF em baixa altitude não prova ausência de CG.
+## Equações dos agrupamentos de fontes
 
-A rede NALMA é regional; no RS usaremos GLM e, quando possível, dados independentes brasileiros para validação.
+Para `N` fontes com altitude `z_i`:
+
+$$
+\bar{z}=\frac{1}{N}\sum_{i=1}^{N}z_i
+$$
+
+$$
+\Delta z=\max_i(z_i)-\min_i(z_i)
+$$
+
+$$
+\Delta t=\max_i(t_i)-\min_i(t_i)
+$$
+
+$$
+p_{\mathrm{baixo}}=\frac{1}{N}\sum_{i=1}^{N}\mathbf{1}(z_i<h_0)
+$$
+
+O limiar `h_0` precisa de calibração. Nem `p_baixo` nem a ausência de fontes VHF próximas ao solo confirmam ou excluem descarga nuvem-solo.
+
+## Fonte e acesso
+
+- [Catálogo NASA NALMA](https://data.nasa.gov/dataset/north-alabama-lightning-mapping-array-lma-v1).
+- [Earthdata Search — coleção](https://search.earthdata.nasa.gov/search/granules?p=C2683433889-GHRC_DAAC).
+- [Guia NASA GHRC](https://ghrc.nsstc.nasa.gov/pub/lma/nalmaraw/doc/nalma_dataset.pdf).
+
+A data de início difere entre versões de metadados do catálogo e do guia; para o experimento GOES-19 usar amostras posteriores a 7 de abril de 2025 e confirmar cobertura de cada granule.
