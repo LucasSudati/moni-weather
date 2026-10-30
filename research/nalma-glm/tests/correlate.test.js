@@ -11,3 +11,7 @@ test("rejeita distância excessiva",()=>assert.equal(correlate(c,[{...f[0],latit
 test("rejeita intervalo distante",()=>assert.equal(correlate(c,[{...f[0],start_time_utc:"2026-05-01T00:01:00Z",end_time_utc:"2026-05-01T00:01:01Z"}]).length,0));
 test("permite muitos para muitos",()=>assert.equal(correlate(c,[f[0],{...f[0],flash_id:"g2"}]).length,2));
 test("rejeita intervalo inválido",()=>assert.throws(()=>correlate(c,[{...f[0],end_time_utc:"2026-04-30T00:00:00Z"}])));
+
+test("rejeita coordenadas ausentes",()=>assert.throws(()=>correlate(c,[{...f[0],latitude:undefined}]),/Coordenadas inválidas/));
+test("rejeita latitude fora de faixa",()=>assert.throws(()=>distanceKm(c[0],{...f[0],latitude:91}),/Coordenadas inválidas/));
+test("rejeita limite NaN",()=>assert.throws(()=>correlate(c,f,{maxDistanceKm:NaN}),/Limites inválidos/));
