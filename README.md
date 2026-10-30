@@ -694,6 +694,102 @@ Bibliotecas: Leaflet e MapLibre GL JS.
 Ícones meteorológicos: **Meteocons**, de Bas Milius, licença MIT. Veja
 `METEOCONS-LICENSE.txt`.
 
+
+## Pesquisa experimental — correlação NALMA × GOES-19 GLM
+
+**Branch:** `feature/nalma-glm-correlation`  
+**Situação:** especificação de dados e metodologia; conversores, coleta e classificação ainda não implementados.
+
+### Objetivo
+
+Comparar fontes de rádio VHF da **North Alabama Lightning Mapping Array (NALMA)** com observações ópticas do **Geostationary Lightning Mapper (GLM)** do GOES-19, cruzando posição e tempo para investigar padrões de descargas elétricas. A NALMA reconstrói fontes VHF em três dimensões; o GLM registra eventos ópticos organizados em eventos, grupos e flashes. Os sensores não medem a mesma grandeza, portanto a correspondência exige tratamento de incertezas. O estudo deverá ocorrer inicialmente com tempestades históricas dentro da cobertura da NALMA e do GOES-19, sem alterar o monitoramento operacional do Brasil.
+
+### Contratos de dados propostos
+
+**NALMA — uma fonte VHF por registro**
+
+| Campo | Tipo | Significado |
+| --- | --- | --- |
+| `source_id` | string | ID interno estável, associado ao arquivo de origem |
+| `timestamp_utc` | string | Instante UTC com precisão original preservada |
+| `latitude`, `longitude` | number | Coordenadas em graus decimais |
+| `altitude_m` | number | Altitude estimada em metros; registrar referencial vertical |
+| `power_dbw` | number/null | Potência, se presente e com unidade confirmada |
+| `quality` | object | Indicadores disponíveis, como ajuste `chi2` e número de estações |
+
+Preservar arquivo, versão, unidades, campos brutos e proveniência. Uma descarga pode produzir muitas fontes VHF; **fonte não equivale a raio individual**. O agrupamento em `nalma_cluster_id` será uma etapa derivada e versionada, não um atributo original garantido.
+
+**GLM — um flash óptico por registro**
+
+| Campo | Tipo | Significado |
+| --- | --- | --- |
+| `flash_id` | string | ID composto com arquivo/produto de origem para evitar colisões |
+| `start_time_utc`, `end_time_utc` | string | Intervalo UTC do flash |
+| `latitude`, `longitude` | number | Posição representativa do flash |
+| `energy_j` | number | Energia óptica conforme produto e unidade verificada |
+| `area_m2` | number | Área estimada; verificar unidade e definição do produto |
+| `group_count`, `event_count` | integer | Quantidades associadas, calculadas quando necessário |
+| `quality_flag` | integer/null | Indicador de qualidade, se disponibilizado |
+
+Preservar também os registros de **eventos → grupos → flashes**, com IDs, vínculos, tempos e metadados de origem. Não presumir que todos os campos acima estejam diretamente presentes no produto original: confirmar nomes, unidades e disponibilidade antes de implementar o parser.
+
+**Correlação — associação experimental**
+
+| Campo | Tipo | Significado |
+| --- | --- | --- |
+| `match_id` | string | ID da associação |
+| `nalma_cluster_id` | string | Agrupamento VHF derivado |
+| `glm_flash_id` | string | Flash óptico relacionado |
+| `time_difference_ms` | number | Diferença temporal definida pelo algoritmo |
+| `distance_km` | number | Distância espacial definida pelo algoritmo |
+| `time_overlap_ms` | number | Sobreposição dos intervalos |
+| `match_score` | number | Compatibilidade heurística; **não** probabilidade calibrada |
+| `classification` | string | Inicialmente `unknown` |
+| `algorithm_version` | string | Versão da associação e dos parâmetros |
+
+Permitir relações muitos-para-muitos; não impor correspondência um-para-um. Documentar método de distância, janelas temporais, critérios de agrupamento, tolerâncias e incertezas. Um pareamento não prova descarga nuvem-solo.
+
+### Fluxo experimental
+
+```text
+NALMA: fontes VHF → controle de qualidade → agrupamentos ─┐
+                                                         ├→ pareamento espaço-temporal → métricas → validação
+GLM: eventos → grupos → flashes → controle de qualidade ──┘
+```
+
+1. Escolher tempestade histórica na região de cobertura simultânea; para GOES-19 operacional como GOES-East, usar período compatível com sua operação.
+2. Obter arquivos originais e registrar proveniência, versões e condições de acesso.
+3. Converter horários para UTC sem perder resolução; validar coordenadas, altitude, energia e área.
+4. Agrupar fontes NALMA por continuidade temporal/espacial, guardando parâmetros e fontes integrantes.
+5. Cruzar agrupamentos VHF e flashes GLM por janelas espaciais e temporais com margens de erro, aceitando múltiplas associações.
+6. Extrair duração, energia óptica, extensão espacial/vertical, concentração temporal e propagação aparente.
+7. Inspecionar falsos pareamentos e validar em tempestades distintas; só depois testar classificadores.
+
+### Classificação e limites
+
+A classificação inicial é `unknown`. O GLM observa emissão óptica; a NALMA localiza fontes de rádio VHF. **Nenhum dos dois, isoladamente, confirma impacto no solo.** Para distinguir descargas intranuvem, entre nuvens e nuvem-solo, será necessária referência independente com rótulos confiáveis. Avaliar precisão, revocação, matriz de confusão e calibração antes de exibir probabilidades no MONI Weather. A área de estudo da NALMA não representa cobertura operacional do Rio Grande do Sul.
+
+### Estrutura planejada (não criada)
+
+```text
+research/nalma-glm/
+├── schemas/
+│   ├── nalma-source.schema.json
+│   ├── glm-flash.schema.json
+│   └── correlation.schema.json
+├── samples/
+├── processors/
+│   ├── nalma-parser.js
+│   ├── glm-parser.js
+│   ├── nalma-clustering.js
+│   └── correlate.js
+└── results/
+```
+
+**Próxima implementação:** verificar os formatos reais NALMA e GLM, criar esquemas JSON e conversores, preparar uma amostra histórica e testar o pareamento. A função operacional `glm` e a branch `main` permanecem fora do escopo desta fase.
+
+------------------------------------------------------------------------
+
 ## Licença
 
 O código original do **MONI Weather** é disponibilizado sob a **GNU Affero General Public License v3.0 (AGPL-3.0)**.
