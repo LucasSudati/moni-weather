@@ -771,5 +771,5 @@ informação veio, quão recente ela é e quais são suas limitações**.
     
     Escrevo porque também preciso ser ouvido.
     
-    Ainda existe muita coisa dentro de mim que gostaria de compreender, construir e viver. E, neste momento, preciso de ajuda para encontrar um pouco de paz.
+    Ainda existe muita coisa dentro de mim que gostaria de compreender, construir e viver. E, neste momento, preciso encontrar um pouco de paz.
 ```
