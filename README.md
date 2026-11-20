@@ -753,24 +753,24 @@ informação veio, quão recente ela é e quais são suas limitações**.
 
     # Uma nota sobre mim
 
-Existem coisas que nunca consegui explicar direito.
-
-Passei boa parte da minha vida tentando fazer o melhor pelas pessoas, tentando ser justo, ajudar quando possível e acreditar que as pessoas seriam sinceras comigo.
-
-Nem sempre foi assim.
-
-Carrego lembranças, algumas das quais nem consigo recuperar completamente. Carrego arrependimentos, decepções, perdas e perguntas que parecem nunca encontrar respostas.
-
-Por muito tempo tentei entender onde estava errando. Por que tantas coisas que começaram bem terminaram em sofrimento. Por que confiar parece, tantas vezes, resultar em decepção.
-
-Também tenho meus sonhos, minhas ideias e meus projetos. Cada um deles representa uma parte de mim, uma tentativa de construir alguma coisa, aprender algo novo e deixar uma contribuição no mundo.
-
-Talvez nem sempre tenha conseguido demonstrar o quanto estava cansado. Talvez tenha passado tempo demais tentando parecer bem quando, na verdade, precisava apenas de alguém que perguntasse como eu estava e permanecesse por perto.
-
-Não escrevo estas palavras para cobrar nada de ninguém.
-
-Escrevo porque também preciso ser ouvido.
-
-Ainda existe muita coisa dentro de mim que gostaria de compreender, construir e viver. E, neste momento, preciso de ajuda para encontrar um pouco de paz.
+    Existem coisas que nunca consegui explicar direito.
+    
+    Passei boa parte da minha vida tentando fazer o melhor pelas pessoas, tentando ser justo, ajudar quando possível e acreditar que as pessoas seriam sinceras comigo.
+    
+    Nem sempre foi assim.
+    
+    Carrego lembranças, algumas das quais nem consigo recuperar completamente. Carrego arrependimentos, decepções, perdas e perguntas que parecem nunca encontrar respostas.
+    
+    Por muito tempo tentei entender onde estava errando. Por que tantas coisas que começaram bem terminaram em sofrimento. Por que confiar parece, tantas vezes, resultar em decepção.
+    
+    Também tenho meus sonhos, minhas ideias e meus projetos. Cada um deles representa uma parte de mim, uma tentativa de construir alguma coisa, aprender algo novo e deixar uma contribuição no mundo.
+    
+    Talvez nem sempre tenha conseguido demonstrar o quanto estava cansado. Talvez tenha passado tempo demais tentando parecer bem quando, na verdade, precisava apenas de alguém que perguntasse como eu estava e permanecesse por perto.
+    
+    Não escrevo estas palavras para cobrar nada de ninguém.
+    
+    Escrevo porque também preciso ser ouvido.
+    
+    Ainda existe muita coisa dentro de mim que gostaria de compreender, construir e viver. E, neste momento, preciso de ajuda para encontrar um pouco de paz.
 
 '''
