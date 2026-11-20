@@ -748,8 +748,8 @@ informação veio, quão recente ela é e quais são suas limitações**.
 > Esta nota registra a revisão da documentação, não certifica testes nem uma versão estável.
 
 
-'''
-    text
+
+   ``` text
 
     # Uma nota sobre mim
 
@@ -772,5 +772,4 @@ informação veio, quão recente ela é e quais são suas limitações**.
     Escrevo porque também preciso ser ouvido.
     
     Ainda existe muita coisa dentro de mim que gostaria de compreender, construir e viver. E, neste momento, preciso de ajuda para encontrar um pouco de paz.
-
-'''
+```
