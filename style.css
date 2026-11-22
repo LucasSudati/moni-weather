@@ -635,21 +635,3 @@ header b,.status,.status span{white-space:nowrap}
   font-size: 15px;
   opacity: .72;
 }
-
-
-/* MONI Earth — globo 3D como visualização inicial; Leaflet permanece como modo 2D. */
-#map{position:relative;isolation:isolate}
-#earth3dMap{position:absolute;inset:0;z-index:2;background:#050a12}
-#earth3dMap canvas{outline:none}
-#map.globe-mode .leaflet-container{visibility:hidden!important}
-#earthModeToggle{position:absolute;z-index:950;right:14px;top:14px;padding:9px 12px;border:1px solid rgba(74,184,255,.45);border-radius:10px;background:rgba(8,14,22,.88);backdrop-filter:blur(10px);color:#bfe5ff;font:600 10px/1.2 Consolas,monospace;letter-spacing:.06em;cursor:pointer}
-#earthModeToggle:hover{background:rgba(24,44,62,.95)}
-#map:not(.globe-mode) #earth3dMap{visibility:hidden;pointer-events:none}
-#map.globe-mode #earth3dMap{visibility:visible;pointer-events:auto}
-#earth3dMap .maplibregl-ctrl-group{background:#0b1016;border:1px solid #26313d}
-#earth3dMap .maplibregl-ctrl-group button{filter:invert(.85)}
-#earth3dMap .maplibregl-ctrl-attrib{background:rgba(8,13,19,.78);color:#9aabb8}
-#earth3dMap .maplibregl-ctrl-attrib a{color:#9fd7ff}
-@media(max-width:760px){#earthModeToggle{right:10px;top:10px;padding:8px 10px;font-size:9px}}
-
-#map.globe-mode .leaflet-pane,#map.globe-mode .leaflet-control-container{visibility:hidden!important}
