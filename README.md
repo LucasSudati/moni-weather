@@ -408,26 +408,6 @@ catástrofe.
 
 ------------------------------------------------------------------------
 
-------------------------------------------------------------------------
-
-# MONI Earth — globo terrestre 3D
-
-O mapa abre inicialmente em um globo 3D interativo, usando MapLibre GL JS
-e projeção globe. É possível girar a Terra, inclinar a visualização,
-aproximar regiões e alternar para o mapa 2D legado pelo controle
-**GLOBO 3D · VER 2D**.
-
-O modo 2D mantém o mapa meteorológico Leaflet e suas camadas existentes
-(satélite, IR, radar, GLM, MAXCAPPI, tempestades e relatos). Nesta etapa,
-o globo 3D é uma visualização cartográfica independente: as camadas
-meteorológicas Leaflet ainda não são reprojetadas sobre o globo. Para
-consultar ou operar essas camadas, use o alternador **VER 2D**. Essa
-separação preserva o comportamento atual enquanto a integração
-geoespacial das camadas é desenvolvida e validada.
-
-O globo depende de conexão para carregar o estilo cartográfico e os
-tiles do OpenFreeMap. A atribuição do provedor permanece visível.
-
 # PWA e notificações
 
 O projeto inclui `manifest.webmanifest` e `sw.js`.
@@ -793,17 +773,3 @@ informação veio, quão recente ela é e quais são suas limitações**.
     
     Ainda existe muita coisa dentro de mim que gostaria de compreender, construir e viver. E, neste momento, preciso encontrar um pouco de paz.
 ```
-
-
-## Camadas meteorológicas no globo 3D
-
-A visualização 3D compartilha agora as fontes das camadas com o mapa 2D:
-- GOES-East ABI GeoColor via WMS NASA GIBS.
-- GOES-East ABI Band 13 infravermelho via WMS NASA GIBS.
-- Imagens MAXCAPPI/REDEMET posicionadas por seus limites geográficos.
-- Mosaicos HD de precipitação MAXCAPPI/REDEMET.
-
-As imagens são posicionadas como fontes georreferenciadas no MapLibre (coordenadas
-geográficas dos quatro cantos), acompanhando a superfície do globo. O mapa Leaflet
-2D e seus controles originais permanecem disponíveis. As camadas vetoriais e outros
-produtos (GLM, vento, trajetórias e alertas) seguem em integração por etapas.
