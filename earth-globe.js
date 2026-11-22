@@ -30,7 +30,7 @@
     try{
       if(earth.getLayer(layerId))earth.removeLayer(layerId);
       if(earth.getSource(sourceId))earth.removeSource(sourceId);
-      earth.addSource(sourceId,{type:'image',url:wmsUrl(layer,time),coordinates:[[-180,90],[180,90],[180,-90],[-180,-90]]});
+      earth.addSource(sourceId,{type:'image',url:wmsUrl(layer,time),coordinates:[[-180,85.05112878],[180,85.05112878],[180,-85.05112878],[-180,-85.05112878]]});
       earth.addLayer({id:layerId,type:'raster',source:sourceId,layout:{visibility:visible?'visible':'none'},paint:{'raster-opacity':opacity,'raster-fade-duration':0}});
       console.info('[MONI Earth] Camada WMS adicionada:',id,layer);
     }catch(error){console.warn('[MONI Earth] WMS '+id,error);}
