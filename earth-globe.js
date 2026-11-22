@@ -87,6 +87,7 @@
         }catch(error){console.warn('[MONI Earth] Projeção/fog:',error);}
         rasterSets.forEach((v,id)=>setWms(id,v.layer,v.visible,v.opacity,v.time,v.attribution));
         imageSets.forEach((v,id)=>renderImages(id));
+        window.dispatchEvent(new CustomEvent('moni:earth-ready'));
       });
       earth.on('error',event=>console.warn('[MONI Earth] Mapa:',event.error||event));
       setMode('globe');
