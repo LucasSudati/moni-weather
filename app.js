@@ -71,6 +71,8 @@ function buildSatellite(offsetHours=0){
   satelliteLayer.on('tileerror',()=>setSatStatus('SEM FRAME'));
   if(satelliteEnabled) satelliteLayer.addTo(map);
 }
+  if(window.MONIEarth)window.MONIEarth.setWms('goes-geocolor','GOES-East_ABI_GeoColor',satelliteEnabled,Number(document.querySelector('#satOpacity')?.value||72)/100,offsetHours>0?isoMinute(roundedUtc(offsetHours)):null,'NASA GIBS / GOES-East ABI');
+
 function setSatStatus(text){const el=document.querySelector('#satStatus');if(el)el.textContent=text;}
 
 document.querySelector('#sat').onchange=e=>{
@@ -81,7 +83,7 @@ document.querySelector('#sat').onchange=e=>{
   }else if(satelliteLayer){map.removeLayer(satelliteLayer);(window._satStale||[]).splice(0).forEach(l=>map.removeLayer(l));setSatStatus('DESLIGADO');}
 };
 
-document.querySelector('#satOpacity').oninput=e=>{document.querySelector('#opacityValue').textContent=e.target.value+'%';if(satelliteLayer)satelliteLayer.setOpacity(Number(e.target.value)/100);};
+document.querySelector('#satOpacity').oninput=e=>{document.querySelector('#opacityValue').textContent=e.target.value+'%';if(satelliteLayer)satelliteLayer.setOpacity(Number(e.target.value)/100);if(window.MONIEarth)window.MONIEarth.setOpacity('goes-geocolor',Number(e.target.value)/100);};
 
 
 
@@ -125,7 +127,7 @@ document.querySelector('#ir').onchange=e=>{
   if(infraredEnabled){
     if(satelliteEnabled){document.querySelector('#sat').checked=false;satelliteEnabled=false;if(satelliteLayer)map.removeLayer(satelliteLayer);document.querySelector('#satControls').classList.remove('visible');setSatStatus('DESLIGADO');}
     buildInfrared(12-Number(timeline.value));
-  }else{infraredRequestId++;if(infraredLayer)map.removeLayer(infraredLayer);infraredLayer=null;setIrStatus('OFF');updateZoomNotice();}
+  }else{infraredRequestId++;if(infraredLayer)map.removeLayer(infraredLayer);infraredLayer=null;if(window.MONIEarth)window.MONIEarth.setVisible('goes-infrared',false);setIrStatus('OFF');updateZoomNotice();}
 };
 
 // GLM, vento e limites configurados no bloco final.
@@ -366,7 +368,7 @@ const RADAR_API=(window.MONI_CONFIG&&window.MONI_CONFIG.radarApiUrl)||((window.M
 function setRadarStatus(t,live=false){const e=document.querySelector('#radarStatus');if(!e)return;e.textContent=t;e.classList.toggle('live',live);}
 function radarDate(ts){if(!ts)return null;const d=new Date(String(ts).replace(' ','T')+'Z');return Number.isNaN(d.getTime())?null:d;}
 function radarStamp(ts){const d=radarDate(ts);return d?d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+'Z':'--';}
-function clearRadarOverlays(){radarOverlays.forEach(x=>map.removeLayer(x));radarOverlays=[];}
+function clearRadarOverlays(){radarOverlays.forEach(x=>map.removeLayer(x));radarOverlays=[];if(window.MONIEarth)window.MONIEarth.clearImages('radar-maxcappi');}
 function drawRadarImages(images,label){
   if(!radarEnabled)return;clearRadarOverlays();const opacity=Number(document.querySelector('#radarOpacity')?.value||58)/100;
   for(const im of images){const b=im.bounds;if(!b||![b.south,b.west,b.north,b.east].every(Number.isFinite)||!im.image)continue;
@@ -601,11 +603,12 @@ async function refreshPrecipHd(){
     const d=await r.json();if(req!==precipHdReq||!document.querySelector('#rain')?.checked)return;
     const imgs=latestPerRadar(Array.isArray(d?.images)?d.images:[]);clearPrecipHd();
     for(const im of imgs){const b=im?.bounds;if(!im?.image||!b)continue;L.imageOverlay(im.image,[[b.south,b.west],[b.north,b.east]],{opacity:.76,pane:'precipHdPane',interactive:false,attribution:'REDEMET / DECEA MAXCAPPI'}).addTo(precipHdLayer);}
+    if(window.MONIEarth)window.MONIEarth.setImages('precipitation-hd',imgs,.76,'REDEMET / DECEA MAXCAPPI');
   }catch(e){console.warn('Precipitação HD REDEMET',e);}
 }
 function setPrecipitation(on){
   if(on){map.addLayer(rainLayer);map.addLayer(precipHdLayer);refreshPrecipHd();clearInterval(precipHdTimer);precipHdTimer=setInterval(refreshPrecipHd,120000);}
-  else{precipHdReq++;clearInterval(precipHdTimer);precipHdTimer=null;map.removeLayer(rainLayer);map.removeLayer(precipHdLayer);clearPrecipHd();}
+  else{precipHdReq++;clearInterval(precipHdTimer);precipHdTimer=null;map.removeLayer(rainLayer);map.removeLayer(precipHdLayer);clearPrecipHd();if(window.MONIEarth)window.MONIEarth.clearImages('precipitation-hd');}
 }
 // A opção inicia ligada no HTML.
 refreshPrecipHd();precipHdTimer=setInterval(refreshPrecipHd,120000);
