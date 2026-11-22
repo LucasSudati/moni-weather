@@ -651,3 +651,5 @@ header b,.status,.status span{white-space:nowrap}
 #earth3dMap .maplibregl-ctrl-attrib{background:rgba(8,13,19,.78);color:#9aabb8}
 #earth3dMap .maplibregl-ctrl-attrib a{color:#9fd7ff}
 @media(max-width:760px){#earthModeToggle{right:10px;top:10px;padding:8px 10px;font-size:9px}}
+
+#map.globe-mode .leaflet-pane,#map.globe-mode .leaflet-control-container{visibility:hidden!important}
