@@ -97,7 +97,7 @@
         </a>
       </div>
     </aside>
-    <section id="map"><div id="riskBar" role="status"></div><div id="fireMapBadge"><span>FOCOS TÉRMICOS POR SATÉLITE</span></div><div id="zoomNotice" class="zoom-notice">ZOOM ALÉM DA RESOLUÇÃO NATIVA DO SATÉLITE</div></section>
+    <section id="map"><div id="earth3dMap" aria-label="Globo terrestre 3D"></div><button id="earthModeToggle" type="button" aria-pressed="true">GLOBO 3D · VER 2D</button><div id="riskBar" role="status"></div><div id="fireMapBadge"><span>FOCOS TÉRMICOS POR SATÉLITE</span></div><div id="zoomNotice" class="zoom-notice">ZOOM ALÉM DA RESOLUÇÃO NATIVA DO SATÉLITE</div></section>
   </main>
   <footer>
     <button id="play">▶</button>
@@ -221,5 +221,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
+  <script src="earth-globe.js"></script>
 </body>
 </html>
