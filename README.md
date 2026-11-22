@@ -408,6 +408,26 @@ catástrofe.
 
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+
+# MONI Earth — globo terrestre 3D
+
+O mapa abre inicialmente em um globo 3D interativo, usando MapLibre GL JS
+e projeção globe. É possível girar a Terra, inclinar a visualização,
+aproximar regiões e alternar para o mapa 2D legado pelo controle
+**GLOBO 3D · VER 2D**.
+
+O modo 2D mantém o mapa meteorológico Leaflet e suas camadas existentes
+(satélite, IR, radar, GLM, MAXCAPPI, tempestades e relatos). Nesta etapa,
+o globo 3D é uma visualização cartográfica independente: as camadas
+meteorológicas Leaflet ainda não são reprojetadas sobre o globo. Para
+consultar ou operar essas camadas, use o alternador **VER 2D**. Essa
+separação preserva o comportamento atual enquanto a integração
+geoespacial das camadas é desenvolvida e validada.
+
+O globo depende de conexão para carregar o estilo cartográfico e os
+tiles do OpenFreeMap. A atribuição do provedor permanece visível.
+
 # PWA e notificações
 
 O projeto inclui `manifest.webmanifest` e `sw.js`.
