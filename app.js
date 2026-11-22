@@ -70,13 +70,14 @@ function buildSatellite(offsetHours=0){
   const me=satelliteLayer;me.on('load',()=>{while(stale.length){const o=stale.shift();if(o!==me)map.removeLayer(o);}setSatStatus(offsetHours===0?'LIVE · '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):labelTime(roundedUtc(offsetHours)));});
   satelliteLayer.on('tileerror',()=>setSatStatus('SEM FRAME'));
   if(satelliteEnabled) satelliteLayer.addTo(map);
+  if(satelliteEnabled&&window.MONIEarth)window.MONIEarth.setWms('goes-geocolor','GOES-East_ABI_GeoColor',true,Number(document.querySelector('#satOpacity')?.value||72)/100,offsetHours>0?isoMinute(roundedUtc(offsetHours)):null,'NASA GIBS / GOES-East ABI');
 }
-  if(window.MONIEarth)window.MONIEarth.setWms('goes-geocolor','GOES-East_ABI_GeoColor',satelliteEnabled,Number(document.querySelector('#satOpacity')?.value||72)/100,offsetHours>0?isoMinute(roundedUtc(offsetHours)):null,'NASA GIBS / GOES-East ABI');
 
 function setSatStatus(text){const el=document.querySelector('#satStatus');if(el)el.textContent=text;}
 
 document.querySelector('#sat').onchange=e=>{
   satelliteEnabled=e.target.checked;
+  if(window.MONIEarth)window.MONIEarth.setVisible('goes-geocolor',satelliteEnabled);
   document.querySelector('#satControls').classList.toggle('visible',satelliteEnabled);
   if(satelliteEnabled){
     if(!satelliteLayer)buildSatellite(12-Number(timeline.value)); else satelliteLayer.addTo(map);
@@ -112,6 +113,7 @@ function buildInfrared(offsetHours=0){
     if(requestId!==infraredRequestId||!infraredEnabled)return;
     const prev=infraredLayer;infraredLayer=L.imageOverlay(url,b,{opacity:.78,pane:'infraredPane',interactive:false,attribution:'NASA GIBS / GOES-East ABI Band 13'}).addTo(map);if(prev)map.removeLayer(prev);
     setIrStatus(offsetHours===0?'LIVE':labelTime(roundedUtc(offsetHours)));
+    if(window.MONIEarth)window.MONIEarth.setWms('goes-infrared','GOES-East_ABI_Band13_Clean_Infrared',true,.78,offsetHours>0?isoMinute(roundedUtc(offsetHours)):null,'NASA GIBS / GOES-East ABI Band 13');
     updateZoomNotice();
   };
   img.onerror=()=>{if(requestId===infraredRequestId)setIrStatus('SEM IMAGEM');};
@@ -375,6 +377,7 @@ function drawRadarImages(images,label){
     const ov=L.imageOverlay(im.image,[[b.south,b.west],[b.north,b.east]],{opacity,pane:'radarPane',interactive:false,attribution:'REDEMET / DECEA'}).addTo(map);radarOverlays.push(ov);
   }
   document.querySelector('#radarFrame').textContent=label||`${images.length} RADARES`;
+  if(window.MONIEarth)window.MONIEarth.setImages('radar-maxcappi',images,opacity,'REDEMET / DECEA');
 }
 function latestPerRadar(all){
   const by=new Map();for(const im of all){if(!im?.image)continue;const k=String(im.area||im.radar||im.image),t=radarDate(im.timestamp)?.getTime()||0,old=by.get(k),ot=old?(radarDate(old.timestamp)?.getTime()||0):-1;if(!old||t>ot)by.set(k,im);}return [...by.values()];
@@ -593,6 +596,7 @@ const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 map.createPane('rainPane');map.getPane('rainPane').style.zIndex=240;map.getPane('rainPane').style.pointerEvents='none';
 map.createPane('precipHdPane');map.getPane('precipHdPane').style.zIndex=245;map.getPane('precipHdPane').style.pointerEvents='none';
 const rainLayer=L.tileLayer.wms(GIBS_WMS,{layers:'IMERG_Precipitation_Rate',format:'image/png',transparent:true,opacity:.28,pane:'rainPane',attribution:'NASA GIBS / IMERG'}).addTo(map);
+if(window.MONIEarth)window.MONIEarth.setWms('precipitation-imerg','IMERG_Precipitation_Rate',!!document.querySelector('#rain')?.checked,.28,null,'NASA GIBS / IMERG');
 const precipHdLayer=L.layerGroup().addTo(map);
 let precipHdTimer=null,precipHdReq=0;
 function clearPrecipHd(){precipHdLayer.clearLayers();}
@@ -607,8 +611,8 @@ async function refreshPrecipHd(){
   }catch(e){console.warn('Precipitação HD REDEMET',e);}
 }
 function setPrecipitation(on){
-  if(on){map.addLayer(rainLayer);map.addLayer(precipHdLayer);refreshPrecipHd();clearInterval(precipHdTimer);precipHdTimer=setInterval(refreshPrecipHd,120000);}
-  else{precipHdReq++;clearInterval(precipHdTimer);precipHdTimer=null;map.removeLayer(rainLayer);map.removeLayer(precipHdLayer);clearPrecipHd();if(window.MONIEarth)window.MONIEarth.clearImages('precipitation-hd');}
+  if(on){if(window.MONIEarth)window.MONIEarth.setVisible('precipitation-imerg',true);map.addLayer(rainLayer);map.addLayer(precipHdLayer);refreshPrecipHd();clearInterval(precipHdTimer);precipHdTimer=setInterval(refreshPrecipHd,120000);}
+  else{if(window.MONIEarth)window.MONIEarth.setVisible('precipitation-imerg',false);precipHdReq++;clearInterval(precipHdTimer);precipHdTimer=null;map.removeLayer(rainLayer);map.removeLayer(precipHdLayer);clearPrecipHd();if(window.MONIEarth)window.MONIEarth.clearImages('precipitation-hd');}
 }
 // A opção inicia ligada no HTML.
 refreshPrecipHd();precipHdTimer=setInterval(refreshPrecipHd,120000);
