@@ -107,6 +107,7 @@ function buildInfrared(offsetHours=0){
   if(offsetHours<0){if(infraredLayer)map.removeLayer(infraredLayer);infraredLayer=null;setIrStatus('SEM DADOS FUTUROS');return;}
   if(!infraredEnabled)return;
   setIrStatus('CARREGANDO…');
+  if(window.MONIEarth)window.MONIEarth.setWms('goes-infrared','GOES-East_ABI_Band13_Clean_Infrared',true,.78,offsetHours>0?isoMinute(roundedUtc(offsetHours)):null,'NASA GIBS / GOES-East ABI Band 13');
   const b=map.getBounds(), url=irViewportUrl(offsetHours);
   const img=new Image(); img.crossOrigin='anonymous';
   img.onload=()=>{
@@ -127,7 +128,7 @@ function updateZoomNotice(){
 document.querySelector('#ir').onchange=e=>{
   infraredEnabled=e.target.checked;
   if(infraredEnabled){
-    if(satelliteEnabled){document.querySelector('#sat').checked=false;satelliteEnabled=false;if(satelliteLayer)map.removeLayer(satelliteLayer);document.querySelector('#satControls').classList.remove('visible');setSatStatus('DESLIGADO');}
+    if(satelliteEnabled){document.querySelector('#sat').checked=false;satelliteEnabled=false;if(window.MONIEarth)window.MONIEarth.setVisible('goes-geocolor',false);if(satelliteLayer)map.removeLayer(satelliteLayer);document.querySelector('#satControls').classList.remove('visible');setSatStatus('DESLIGADO');}
     buildInfrared(12-Number(timeline.value));
   }else{infraredRequestId++;if(infraredLayer)map.removeLayer(infraredLayer);infraredLayer=null;if(window.MONIEarth)window.MONIEarth.setVisible('goes-infrared',false);setIrStatus('OFF');updateZoomNotice();}
 };
