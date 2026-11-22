@@ -18,19 +18,21 @@
     window.dispatchEvent(new CustomEvent('moni:map-mode',{detail:{mode}}));
   }
   function wmsUrl(layer,time){
-    const p=new URLSearchParams({SERVICE:'WMS',VERSION:'1.1.1',REQUEST:'GetMap',LAYERS:layer,STYLES:'',FORMAT:'image/png',TRANSPARENT:'true',SRS:'EPSG:3857',WIDTH:'256',HEIGHT:'256',BBOX:'{bbox-epsg-3857}'});
+    const p=new URLSearchParams({SERVICE:'WMS',VERSION:'1.1.1',REQUEST:'GetMap',LAYERS:layer,STYLES:'',FORMAT:'image/png',TRANSPARENT:'true',SRS:'EPSG:4326',WIDTH:'2048',HEIGHT:'1024',BBOX:'-180,-90,180,90'});
     if(time)p.set('TIME',time);
-    return 'https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi?'+p.toString().replace('%7Bbbox-epsg-3857%7D','{bbox-epsg-3857}');
+    p.set('_moni',String(Date.now()));
+    return 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?'+p.toString();
   }
   function setWms(id,layer,visible,opacity,time,attribution){
-    if(!earth||!earth.isStyleLoaded()){rasterSets.set(id,{layer,visible,opacity,time,attribution});return;}
+    rasterSets.set(id,{layer,visible,opacity,time,attribution});
+    if(!earth||!earth.isStyleLoaded())return;
     const sourceId='moni-src-'+id,layerId='moni-layer-'+id;
     try{
       if(earth.getLayer(layerId))earth.removeLayer(layerId);
       if(earth.getSource(sourceId))earth.removeSource(sourceId);
-      earth.addSource(sourceId,{type:'raster',tiles:[wmsUrl(layer,time)],tileSize:256,attribution:attribution||'NASA GIBS'});
-      earth.addLayer({id:layerId,type:'raster',source:sourceId,layout:{visibility:visible?'visible':'none'},paint:{'raster-opacity':opacity,'raster-resampling':'linear'}});
-      rasterSets.set(id,{layer,visible,opacity,time,attribution});
+      earth.addSource(sourceId,{type:'image',url:wmsUrl(layer,time),coordinates:[[-180,90],[180,90],[180,-90],[-180,-90]]});
+      earth.addLayer({id:layerId,type:'raster',source:sourceId,layout:{visibility:visible?'visible':'none'},paint:{'raster-opacity':opacity,'raster-fade-duration':0}});
+      console.info('[MONI Earth] Camada WMS adicionada:',id,layer);
     }catch(error){console.warn('[MONI Earth] WMS '+id,error);}
   }
   function setVisible(id,visible){
