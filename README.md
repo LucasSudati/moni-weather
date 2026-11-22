@@ -793,3 +793,17 @@ informação veio, quão recente ela é e quais são suas limitações**.
     
     Ainda existe muita coisa dentro de mim que gostaria de compreender, construir e viver. E, neste momento, preciso encontrar um pouco de paz.
 ```
+
+
+## Camadas meteorológicas no globo 3D
+
+A visualização 3D compartilha agora as fontes das camadas com o mapa 2D:
+- GOES-East ABI GeoColor via WMS NASA GIBS.
+- GOES-East ABI Band 13 infravermelho via WMS NASA GIBS.
+- Imagens MAXCAPPI/REDEMET posicionadas por seus limites geográficos.
+- Mosaicos HD de precipitação MAXCAPPI/REDEMET.
+
+As imagens são posicionadas como fontes georreferenciadas no MapLibre (coordenadas
+geográficas dos quatro cantos), acompanhando a superfície do globo. O mapa Leaflet
+2D e seus controles originais permanecem disponíveis. As camadas vetoriais e outros
+produtos (GLM, vento, trajetórias e alertas) seguem em integração por etapas.
