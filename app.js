@@ -596,6 +596,7 @@ const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 map.createPane('rainPane');map.getPane('rainPane').style.zIndex=240;map.getPane('rainPane').style.pointerEvents='none';
 map.createPane('precipHdPane');map.getPane('precipHdPane').style.zIndex=245;map.getPane('precipHdPane').style.pointerEvents='none';
 const rainLayer=L.tileLayer.wms(GIBS_WMS,{layers:'IMERG_Precipitation_Rate',format:'image/png',transparent:true,opacity:.28,pane:'rainPane',attribution:'NASA GIBS / IMERG'}).addTo(map);
+window.addEventListener('moni:earth-ready',()=>{if(window.MONIEarth)window.MONIEarth.setWms('precipitation-imerg','IMERG_Precipitation_Rate',!!document.querySelector('#rain')?.checked,.28,null,'NASA GIBS / IMERG');},{once:true});
 if(window.MONIEarth)window.MONIEarth.setWms('precipitation-imerg','IMERG_Precipitation_Rate',!!document.querySelector('#rain')?.checked,.28,null,'NASA GIBS / IMERG');
 const precipHdLayer=L.layerGroup().addTo(map);
 let precipHdTimer=null,precipHdReq=0;
