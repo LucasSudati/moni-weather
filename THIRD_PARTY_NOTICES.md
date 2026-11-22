@@ -41,7 +41,7 @@ respectivos provedores.
 ### MapLibre GL JS
 
 - Projeto: MapLibre GL JS
-- Uso no MONI: visualização do globo terrestre principal em 3D e das rotas internas em 2D/3D
+- Uso no MONI: visualização das rotas internas em 2D/3D
 - Licença: BSD 3-Clause
 - Projeto oficial: <https://maplibre.org/>
 
